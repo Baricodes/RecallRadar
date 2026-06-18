@@ -6,7 +6,6 @@ Idempotent: safe to run on any schedule without creating duplicates.
 
 import json
 import os
-import re
 import logging
 from datetime import datetime, timedelta, timezone
 from urllib.request import urlopen, Request
@@ -14,105 +13,16 @@ from urllib.error import HTTPError, URLError
 
 import boto3
 
+from shared.state_parsing import parse_distribution_pattern
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
-# ──────────────────────────────────────────────
-# Configuration
-# ──────────────────────────────────────────────
 
 TABLE_NAME = os.environ.get("TABLE_NAME", "recallradar-recalls")
 OPENFDA_BASE = "https://api.fda.gov/food/enforcement.json"
 LOOKBACK_DAYS = int(os.environ.get("LOOKBACK_DAYS", "90"))
-PAGE_SIZE = 100  # openFDA max is 1000, but 100 is safer for Lambda memory
+PAGE_SIZE = 100
 
-# US state abbreviations for parsing distribution_pattern
-US_STATES = {
-    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
-    "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
-    "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
-    "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
-    "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
-    "DC", "PR", "GU", "VI", "AS", "MP"
-}
-
-# Full state name → abbreviation mapping for distribution_pattern parsing
-STATE_NAMES = {
-    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR",
-    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
-    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
-    "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
-    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
-    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN",
-    "mississippi": "MS", "missouri": "MO", "montana": "MT", "nebraska": "NE",
-    "nevada": "NV", "new hampshire": "NH", "new jersey": "NJ",
-    "new mexico": "NM", "new york": "NY", "north carolina": "NC",
-    "north dakota": "ND", "ohio": "OH", "oklahoma": "OK", "oregon": "OR",
-    "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC",
-    "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT",
-    "vermont": "VT", "virginia": "VA", "washington": "WA",
-    "west virginia": "WV", "wisconsin": "WI", "wyoming": "WY",
-    "district of columbia": "DC", "puerto rico": "PR"
-}
-
-
-# ──────────────────────────────────────────────
-# State Parsing Logic
-# ──────────────────────────────────────────────
-
-def parse_distribution_pattern(pattern: str) -> dict:
-    """
-    Parses the openFDA distribution_pattern field into structured state data.
-
-    The distribution_pattern field is free text with inconsistent formatting.
-    Examples:
-        "Nationwide"
-        "FL, MI, MS, and OH."
-        "State of California"
-        "NY, NJ, CT, PA, and online sales nationwide"
-        "Distributed in TX and LA through retail stores"
-
-    Returns:
-        {
-            "affected_states": ["FL", "MI", "MS", "OH"],
-            "is_nationwide": False
-        }
-    """
-    if not pattern:
-        return {"affected_states": [], "is_nationwide": False}
-
-    pattern_lower = pattern.lower().strip()
-
-    # Check for nationwide distribution
-    nationwide_signals = ["nationwide", "national distribution", "all states",
-                          "united states", "throughout the us", "all 50 states"]
-    is_nationwide = any(signal in pattern_lower for signal in nationwide_signals)
-
-    affected_states = set()
-
-    if is_nationwide:
-        affected_states = set(US_STATES) - {"PR", "GU", "VI", "AS", "MP"}
-    else:
-        # Strategy 1: Find two-letter state abbreviations
-        abbrev_matches = re.findall(r'\b([A-Z]{2})\b', pattern)
-        for match in abbrev_matches:
-            if match in US_STATES:
-                affected_states.add(match)
-
-        # Strategy 2: Find full state names
-        for name, abbrev in STATE_NAMES.items():
-            if name in pattern_lower:
-                affected_states.add(abbrev)
-
-    return {
-        "affected_states": sorted(list(affected_states)),
-        "is_nationwide": is_nationwide
-    }
-
-
-# ──────────────────────────────────────────────
-# openFDA API Client
-# ──────────────────────────────────────────────
 
 def fetch_recalls(skip: int = 0) -> dict:
     """Fetch a page of recall records from openFDA."""
@@ -139,10 +49,6 @@ def fetch_recalls(skip: int = 0) -> dict:
         logger.error(f"openFDA connection error: {e.reason}")
         raise
 
-
-# ──────────────────────────────────────────────
-# DynamoDB Writer
-# ──────────────────────────────────────────────
 
 def write_recalls_to_dynamo(recalls: list, table) -> int:
     """
@@ -186,10 +92,9 @@ def write_recalls_to_dynamo(recalls: list, table) -> int:
                 "voluntary_mandated": recall.get("voluntary_mandated", ""),
                 "code_info": recall.get("code_info", ""),
                 "source": source,
-                "ingested_at": datetime.now(timezone.utc).isoformat()
+                "ingested_at": datetime.now(timezone.utc).isoformat(),
             }
 
-            # DynamoDB doesn't allow empty strings — clean them
             item = {k: v for k, v in item.items() if v != "" and v != []}
 
             batch.put_item(Item=item)
@@ -197,10 +102,6 @@ def write_recalls_to_dynamo(recalls: list, table) -> int:
 
     return written
 
-
-# ──────────────────────────────────────────────
-# Lambda Handler
-# ──────────────────────────────────────────────
 
 def lambda_handler(event, context):
     """
@@ -238,7 +139,6 @@ def lambda_handler(event, context):
 
         logger.info(f"Page written: {written} records (total so far: {total_written})")
 
-        # openFDA caps skip at 26000
         if skip >= min(total_available, 26000):
             break
 
@@ -250,6 +150,6 @@ def lambda_handler(event, context):
             "message": "Ingestion complete",
             "records_written": total_written,
             "lookback_days": LOOKBACK_DAYS,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        })
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }),
     }

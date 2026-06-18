@@ -9,18 +9,13 @@ variable "function_name" {
 }
 
 variable "table_name" {
-  description = "DynamoDB table name the Lambda writes to."
+  description = "DynamoDB table name the Lambda reads from."
   type        = string
 }
 
 variable "table_arn" {
-  description = "DynamoDB table ARN the Lambda writes to."
+  description = "DynamoDB table ARN the Lambda reads from."
   type        = string
-}
-
-variable "lookback_days" {
-  description = "Days to look back when fetching recalls from openFDA."
-  type        = number
 }
 
 variable "memory_mb" {
@@ -34,7 +29,7 @@ variable "timeout_seconds" {
 }
 
 variable "source_path" {
-  description = "Path to the Lambda package root (relative to terraform root), containing ingestion/ and shared/."
+  description = "Path to the Lambda package root (relative to terraform root), containing query/ and shared/."
   type        = string
   default     = "../lambda"
 }

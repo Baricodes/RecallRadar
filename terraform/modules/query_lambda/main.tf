@@ -11,7 +11,7 @@ data "archive_file" "lambda_zip" {
   output_path = "${path.module}/.build/${var.function_name}.zip"
 
   excludes = [
-    "query",
+    "ingestion",
     "tests",
     "__pycache__",
     "*.pyc",
@@ -21,8 +21,8 @@ data "archive_file" "lambda_zip" {
   ]
 }
 
-resource "aws_iam_role" "ingestion" {
-  name = "${var.project_name}-ingestion-role"
+resource "aws_iam_role" "query" {
+  name = "${var.project_name}-query-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -38,21 +38,25 @@ resource "aws_iam_role" "ingestion" {
   })
 }
 
-resource "aws_iam_role_policy" "ingestion" {
-  name = "${var.project_name}-ingestion-policy"
-  role = aws_iam_role.ingestion.id
+resource "aws_iam_role_policy" "query" {
+  name = "${var.project_name}-query-policy"
+  role = aws_iam_role.query.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "DynamoDBWrite"
+        Sid    = "DynamoDBRead"
         Effect = "Allow"
         Action = [
-          "dynamodb:PutItem",
-          "dynamodb:BatchWriteItem"
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan"
         ]
-        Resource = var.table_arn
+        Resource = [
+          var.table_arn,
+          "${var.table_arn}/index/*"
+        ]
       },
       {
         Sid    = "CloudWatchLogs"
@@ -68,15 +72,15 @@ resource "aws_iam_role_policy" "ingestion" {
   })
 }
 
-resource "aws_cloudwatch_log_group" "ingestion" {
+resource "aws_cloudwatch_log_group" "query" {
   name              = "/aws/lambda/${var.function_name}"
   retention_in_days = 14
 }
 
-resource "aws_lambda_function" "ingestion" {
+resource "aws_lambda_function" "query" {
   function_name = var.function_name
-  role          = aws_iam_role.ingestion.arn
-  handler       = "ingestion.handler.lambda_handler"
+  role          = aws_iam_role.query.arn
+  handler       = "query.handler.lambda_handler"
   runtime       = "python3.12"
   architectures = ["arm64"]
 
@@ -88,13 +92,12 @@ resource "aws_lambda_function" "ingestion" {
 
   environment {
     variables = {
-      TABLE_NAME    = var.table_name
-      LOOKBACK_DAYS = tostring(var.lookback_days)
+      TABLE_NAME = var.table_name
     }
   }
 
   depends_on = [
-    aws_iam_role_policy.ingestion,
-    aws_cloudwatch_log_group.ingestion
+    aws_iam_role_policy.query,
+    aws_cloudwatch_log_group.query
   ]
 }

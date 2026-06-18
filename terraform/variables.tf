@@ -46,8 +46,44 @@ variable "ingestion_lambda_timeout_seconds" {
   default     = 120
 }
 
-variable "ingestion_lambda_source_path" {
-  description = "Path to the ingestion Lambda source directory, relative to the terraform/ directory."
+variable "lambda_source_path" {
+  description = "Path to the Lambda package root, relative to terraform/, containing ingestion/, query/, and shared/."
   type        = string
-  default     = "../lambda/ingestion"
+  default     = "../lambda"
+}
+
+variable "ingestion_schedule_expression" {
+  description = "EventBridge Scheduler expression for ingestion runs."
+  type        = string
+  default     = "rate(6 hours)"
+}
+
+variable "query_lambda_name" {
+  description = "Name of the recall query Lambda function."
+  type        = string
+  default     = "recallradar-query"
+}
+
+variable "query_lambda_memory_mb" {
+  description = "Memory allocation for the query Lambda (MB)."
+  type        = number
+  default     = 256
+}
+
+variable "query_lambda_timeout_seconds" {
+  description = "Timeout for the query Lambda (seconds)."
+  type        = number
+  default     = 30
+}
+
+variable "api_name" {
+  description = "API Gateway REST API name."
+  type        = string
+  default     = "recallradar-api"
+}
+
+variable "api_stage_name" {
+  description = "API Gateway deployment stage."
+  type        = string
+  default     = "v1"
 }
