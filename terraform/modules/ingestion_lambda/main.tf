@@ -1,10 +1,22 @@
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
+locals {
+  source_dir = abspath("${path.root}/${var.source_path}")
+}
+
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_file = "${var.source_path}/handler.py"
+  source_dir  = local.source_dir
   output_path = "${path.module}/.build/${var.function_name}.zip"
+
+  excludes = [
+    "__pycache__",
+    "*.pyc",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+  ]
 }
 
 resource "aws_iam_role" "ingestion" {

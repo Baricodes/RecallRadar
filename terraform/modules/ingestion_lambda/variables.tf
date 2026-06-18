@@ -34,6 +34,6 @@ variable "timeout_seconds" {
 }
 
 variable "source_path" {
-  description = "Path to Lambda source directory containing handler.py."
+  description = "Path to the Lambda source directory (relative to the terraform root), containing handler.py."
   type        = string
 }

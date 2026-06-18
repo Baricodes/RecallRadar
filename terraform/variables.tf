@@ -47,7 +47,7 @@ variable "ingestion_lambda_timeout_seconds" {
 }
 
 variable "ingestion_lambda_source_path" {
-  description = "Path to the ingestion Lambda source directory (relative to terraform root)."
+  description = "Path to the ingestion Lambda source directory, relative to the terraform/ directory."
   type        = string
   default     = "../lambda/ingestion"
 }
