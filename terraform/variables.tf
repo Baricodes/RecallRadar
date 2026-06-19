@@ -87,3 +87,15 @@ variable "api_stage_name" {
   type        = string
   default     = "v1"
 }
+
+variable "dashboard_bucket_name" {
+  description = "S3 bucket name for the React dashboard. Leave empty for recallradar-dashboard-ACCOUNT_ID."
+  type        = string
+  default     = ""
+}
+
+variable "alarm_email" {
+  description = "Email for CloudWatch alarm SNS notifications. Leave empty to create the topic without a subscription."
+  type        = string
+  default     = ""
+}

@@ -159,6 +159,7 @@ def get_recall_stats() -> dict:
         "by_status": dict(status_counts),
         "top_firms": dict(firm_counts.most_common(10)),
         "top_states": dict(state_counts.most_common(10)),
+        "state_counts": dict(state_counts),
         "nationwide_count": nationwide_count,
         "nationwide_percentage": round(
             (nationwide_count / len(items) * 100) if items else 0, 1

@@ -62,3 +62,33 @@ output "api_test_commands" {
     curl "${module.api_gateway.invoke_url}/recalls/stats"
   EOT
 }
+
+output "dashboard_bucket_name" {
+  description = "S3 bucket for the React dashboard build artifacts."
+  value       = module.dashboard_hosting.bucket_name
+}
+
+output "cloudfront_url" {
+  description = "HTTPS URL for the RecallRadar dashboard."
+  value       = module.dashboard_hosting.cloudfront_url
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID (for cache invalidation)."
+  value       = module.dashboard_hosting.cloudfront_distribution_id
+}
+
+output "dashboard_deploy_command" {
+  description = "Build and deploy the React dashboard to S3 + invalidate CloudFront."
+  value       = "REACT_APP_API_URL=${module.api_gateway.invoke_url} npm run build --prefix ../dashboard && aws s3 sync ../dashboard/build/ s3://${module.dashboard_hosting.bucket_name}/ --delete && aws cloudfront create-invalidation --distribution-id ${module.dashboard_hosting.cloudfront_distribution_id} --paths '/*'"
+}
+
+output "cloudwatch_dashboard_name" {
+  description = "CloudWatch operations dashboard name."
+  value       = module.monitoring.dashboard_name
+}
+
+output "alarm_sns_topic_arn" {
+  description = "SNS topic ARN for CloudWatch alarms."
+  value       = module.monitoring.sns_topic_arn
+}

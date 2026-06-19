@@ -51,3 +51,25 @@ module "api_gateway" {
   lambda_invoke_arn    = module.query_lambda.invoke_arn
   lambda_function_name = module.query_lambda.function_name
 }
+
+# Phase 1G — S3 + CloudFront dashboard hosting
+module "dashboard_hosting" {
+  source = "./modules/dashboard_hosting"
+
+  project_name = var.project_name
+  bucket_name  = var.dashboard_bucket_name
+}
+
+# Phase 1H — CloudWatch dashboard and alarms
+module "monitoring" {
+  source = "./modules/monitoring"
+
+  project_name           = var.project_name
+  aws_region             = var.aws_region
+  ingestion_lambda_name  = module.ingestion_lambda.function_name
+  dynamodb_table_name    = module.recalls_table.table_name
+  api_name               = var.api_name
+  api_stage_name         = var.api_stage_name
+  dlq_name               = "${var.project_name}-dlq"
+  alarm_email            = var.alarm_email
+}

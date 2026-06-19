@@ -1,0 +1,59 @@
+import React from "react";
+
+export function FilterBar({ filters, onChange }) {
+  const update = (key, value) => {
+    onChange((prev) => ({
+      ...prev,
+      [key]: prev[key] === value ? null : value,
+    }));
+  };
+
+  return (
+    <div className="filter-bar">
+      <div className="filter-group">
+        <label>Severity</label>
+        <div className="filter-buttons">
+          {["Class I", "Class II", "Class III"].map((cls) => (
+            <button
+              key={cls}
+              type="button"
+              className={`filter-btn ${filters.classification === cls ? "active" : ""}`}
+              onClick={() => update("classification", cls)}
+            >
+              {cls}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="filter-group">
+        <label>Status</label>
+        <div className="filter-buttons">
+          {["Ongoing", "Completed", "Terminated"].map((status) => (
+            <button
+              key={status}
+              type="button"
+              className={`filter-btn ${filters.status === status ? "active" : ""}`}
+              onClick={() => update("status", status)}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {filters.state && (
+        <div className="active-filter">
+          Showing: {filters.state}
+          <button
+            type="button"
+            onClick={() => update("state", null)}
+            className="clear-btn"
+          >
+            ×
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

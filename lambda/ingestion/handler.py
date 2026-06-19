@@ -22,6 +22,7 @@ TABLE_NAME = os.environ.get("TABLE_NAME", "recallradar-recalls")
 OPENFDA_BASE = "https://api.fda.gov/food/enforcement.json"
 LOOKBACK_DAYS = int(os.environ.get("LOOKBACK_DAYS", "90"))
 PAGE_SIZE = 100
+METRIC_NAMESPACE = "RecallRadar"
 
 
 def fetch_recalls(skip: int = 0) -> dict:
@@ -50,13 +51,41 @@ def fetch_recalls(skip: int = 0) -> dict:
         raise
 
 
-def write_recalls_to_dynamo(recalls: list, table) -> int:
+def publish_parse_failure_metric(count: int) -> None:
+    """Publish custom CloudWatch metric for distribution_pattern parse failures."""
+    if count <= 0:
+        return
+
+    cloudwatch = boto3.client("cloudwatch")
+    cloudwatch.put_metric_data(
+        Namespace=METRIC_NAMESPACE,
+        MetricData=[
+            {
+                "MetricName": "ParseFailures",
+                "Value": count,
+                "Unit": "Count",
+                "Dimensions": [
+                    {
+                        "Name": "FunctionName",
+                        "Value": os.environ.get(
+                            "AWS_LAMBDA_FUNCTION_NAME", "recallradar-ingestion"
+                        ),
+                    }
+                ],
+            }
+        ],
+    )
+
+
+def write_recalls_to_dynamo(recalls: list, table) -> dict:
     """
     Batch-write recall records to DynamoDB.
-    Uses batch_writer for efficiency (auto-batches into 25-item writes).
-    Returns count of records written.
+    Catches individual record failures without aborting the batch.
+    Returns summary counts for logging and metrics.
     """
     written = 0
+    failed_recall_numbers = []
+    parse_failures = 0
 
     with table.batch_writer(overwrite_by_pkeys=["PK", "SK"]) as batch:
         for recall in recalls:
@@ -65,42 +94,68 @@ def write_recalls_to_dynamo(recalls: list, table) -> int:
                 logger.warning("Skipping recall with no recall_number")
                 continue
 
-            report_date = recall.get("report_date", "00000000")
-            source = "FDA"
+            try:
+                report_date = recall.get("report_date", "00000000")
+                source = "FDA"
 
-            dist_data = parse_distribution_pattern(
-                recall.get("distribution_pattern", "")
-            )
+                try:
+                    dist_data = parse_distribution_pattern(
+                        recall.get("distribution_pattern", "")
+                    )
+                except Exception as e:
+                    parse_failures += 1
+                    logger.warning(
+                        f"Parse failure for recall_number={recall_number}: {e}"
+                    )
+                    dist_data = {"affected_states": [], "is_nationwide": False}
 
-            item = {
-                "PK": recall_number,
-                "SK": f"{source}#{report_date}",
-                "classification": recall.get("classification", "Unknown"),
-                "status": recall.get("status", "Unknown"),
-                "report_date": report_date,
-                "recall_initiation_date": recall.get("recall_initiation_date", ""),
-                "recalling_firm": recall.get("recalling_firm", "Unknown"),
-                "product_description": recall.get("product_description", ""),
-                "reason_for_recall": recall.get("reason_for_recall", ""),
-                "distribution_pattern": recall.get("distribution_pattern", ""),
-                "affected_states": dist_data["affected_states"],
-                "is_nationwide": dist_data["is_nationwide"],
-                "firm_city": recall.get("city", ""),
-                "firm_state": recall.get("state", ""),
-                "country": recall.get("country", ""),
-                "product_quantity": recall.get("product_quantity", ""),
-                "voluntary_mandated": recall.get("voluntary_mandated", ""),
-                "code_info": recall.get("code_info", ""),
-                "source": source,
-                "ingested_at": datetime.now(timezone.utc).isoformat(),
-            }
+                item = {
+                    "PK": recall_number,
+                    "SK": f"{source}#{report_date}",
+                    "classification": recall.get("classification", "Unknown"),
+                    "status": recall.get("status", "Unknown"),
+                    "report_date": report_date,
+                    "recall_initiation_date": recall.get("recall_initiation_date", ""),
+                    "recalling_firm": recall.get("recalling_firm", "Unknown"),
+                    "product_description": recall.get("product_description", ""),
+                    "reason_for_recall": recall.get("reason_for_recall", ""),
+                    "distribution_pattern": recall.get("distribution_pattern", ""),
+                    "affected_states": dist_data["affected_states"],
+                    "is_nationwide": dist_data["is_nationwide"],
+                    "firm_city": recall.get("city", ""),
+                    "firm_state": recall.get("state", ""),
+                    "country": recall.get("country", ""),
+                    "product_quantity": recall.get("product_quantity", ""),
+                    "voluntary_mandated": recall.get("voluntary_mandated", ""),
+                    "code_info": recall.get("code_info", ""),
+                    "source": source,
+                    "ingested_at": datetime.now(timezone.utc).isoformat(),
+                }
 
-            item = {k: v for k, v in item.items() if v != "" and v != []}
+                item = {k: v for k, v in item.items() if v != "" and v != []}
 
-            batch.put_item(Item=item)
-            written += 1
+                batch.put_item(Item=item)
+                written += 1
 
-    return written
+            except Exception as e:
+                failed_recall_numbers.append(recall_number)
+                logger.error(
+                    f"Failed to write recall_number={recall_number}: {e}",
+                    exc_info=True,
+                )
+
+    if failed_recall_numbers:
+        logger.error(
+            f"Failed recall_numbers for manual investigation: {failed_recall_numbers}"
+        )
+
+    publish_parse_failure_metric(parse_failures)
+
+    return {
+        "written": written,
+        "failed_recall_numbers": failed_recall_numbers,
+        "parse_failures": parse_failures,
+    }
 
 
 def lambda_handler(event, context):
@@ -114,6 +169,9 @@ def lambda_handler(event, context):
     table = dynamodb.Table(TABLE_NAME)
 
     total_written = 0
+    total_failed = 0
+    total_parse_failures = 0
+    all_failed_recall_numbers = []
     skip = 0
     total_available = None
 
@@ -133,22 +191,34 @@ def lambda_handler(event, context):
             total_available = data.get("meta", {}).get("results", {}).get("total", 0)
             logger.info(f"Total records available from openFDA: {total_available}")
 
-        written = write_recalls_to_dynamo(results, table)
-        total_written += written
+        page_result = write_recalls_to_dynamo(results, table)
+        total_written += page_result["written"]
+        total_failed += len(page_result["failed_recall_numbers"])
+        total_parse_failures += page_result["parse_failures"]
+        all_failed_recall_numbers.extend(page_result["failed_recall_numbers"])
         skip += PAGE_SIZE
 
-        logger.info(f"Page written: {written} records (total so far: {total_written})")
+        logger.info(
+            f"Page written: {page_result['written']} records "
+            f"(total so far: {total_written}, failed: {total_failed})"
+        )
 
         if skip >= min(total_available, 26000):
             break
 
-    logger.info(f"Ingestion complete — {total_written} total records written")
+    logger.info(
+        f"Ingestion complete — {total_written} written, "
+        f"{total_failed} failed, {total_parse_failures} parse failures"
+    )
 
     return {
         "statusCode": 200,
         "body": json.dumps({
             "message": "Ingestion complete",
             "records_written": total_written,
+            "records_failed": total_failed,
+            "parse_failures": total_parse_failures,
+            "failed_recall_numbers": all_failed_recall_numbers,
             "lookback_days": LOOKBACK_DAYS,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }),
