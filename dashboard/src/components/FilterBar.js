@@ -1,5 +1,11 @@
 import React from "react";
 
+const SEVERITY_COLORS = {
+  "Class I": "#dc2626",
+  "Class II": "#ea580c",
+  "Class III": "#ca8a04",
+};
+
 export function FilterBar({ filters, onChange }) {
   const update = (key, value) => {
     onChange((prev) => ({
@@ -18,6 +24,7 @@ export function FilterBar({ filters, onChange }) {
               key={cls}
               type="button"
               className={`filter-btn ${filters.classification === cls ? "active" : ""}`}
+              style={{ "--severity-color": SEVERITY_COLORS[cls] }}
               onClick={() => update("classification", cls)}
             >
               {cls}

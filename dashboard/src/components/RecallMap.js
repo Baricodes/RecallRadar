@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ComposableMap,
   Geographies,
@@ -7,6 +7,12 @@ import {
 import { scaleQuantize } from "d3-scale";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json";
+
+const CLASS_COLORS = {
+  "Class I": "#dc2626",
+  "Class II": "#ea580c",
+  "Class III": "#ca8a04",
+};
 
 const FIPS_TO_STATE = {
   "01": "AL", "02": "AK", "04": "AZ", "05": "AR", "06": "CA",
@@ -22,8 +28,33 @@ const FIPS_TO_STATE = {
   "11": "DC",
 };
 
-export function RecallMap({ stats, selectedState, onStateClick }) {
-  const stateCounts = stats?.state_counts || stats?.top_states || {};
+const EMPTY_BREAKDOWN = {
+  "Class I": 0,
+  "Class II": 0,
+  "Class III": 0,
+};
+
+export function RecallMap({ stats, recalls = [], selectedState, onStateClick }) {
+  const [tooltip, setTooltip] = useState(null);
+  const stateCounts = useMemo(
+    () => stats?.state_counts || stats?.top_states || {},
+    [stats]
+  );
+  const maxCount = Math.max(...Object.values(stateCounts), 0);
+
+  const stateClassCounts = useMemo(() => {
+    return recalls.reduce((acc, recall) => {
+      const states = recall.affected_states || [];
+      states.forEach((state) => {
+        if (!acc[state]) {
+          acc[state] = { ...EMPTY_BREAKDOWN };
+        }
+        acc[state][recall.classification] =
+          (acc[state][recall.classification] || 0) + 1;
+      });
+      return acc;
+    }, {});
+  }, [recalls]);
 
   const colorScale = useMemo(() => {
     if (!stateCounts || Object.keys(stateCounts).length === 0) {
@@ -40,40 +71,89 @@ export function RecallMap({ stats, selectedState, onStateClick }) {
   }, [stateCounts]);
 
   return (
-    <ComposableMap projection="geoAlbersUsa">
-      <Geographies geography={GEO_URL}>
-        {({ geographies }) =>
-          geographies.map((geo) => {
-            const stateCode = FIPS_TO_STATE[geo.id];
-            const count = stateCounts[stateCode] || 0;
-            const isSelected = selectedState === stateCode;
+    <div className="recall-map">
+      <ComposableMap projection="geoAlbersUsa">
+        <Geographies geography={GEO_URL}>
+          {({ geographies }) =>
+            geographies.map((geo) => {
+              const stateCode = FIPS_TO_STATE[geo.id];
+              const count = stateCounts[stateCode] || 0;
+              const isSelected = selectedState === stateCode;
+              const breakdown = stateClassCounts[stateCode] || EMPTY_BREAKDOWN;
 
-            return (
-              <Geography
-                key={geo.rsmKey}
-                geography={geo}
-                onClick={() => onStateClick(stateCode)}
-                style={{
-                  default: {
-                    fill: isSelected ? "#2563eb" : colorScale(count),
-                    stroke: "#fff",
-                    strokeWidth: 0.5,
-                    outline: "none",
-                  },
-                  hover: {
-                    fill: "#3b82f6",
-                    stroke: "#fff",
-                    strokeWidth: 1,
-                    outline: "none",
-                    cursor: "pointer",
-                  },
-                  pressed: { outline: "none" },
-                }}
-              />
-            );
-          })
-        }
-      </Geographies>
-    </ComposableMap>
+              return (
+                <Geography
+                  key={geo.rsmKey}
+                  geography={geo}
+                  onClick={() => stateCode && onStateClick(stateCode)}
+                  onMouseEnter={(event) =>
+                    setTooltip({
+                      x: event.clientX,
+                      y: event.clientY,
+                      stateCode,
+                      stateName: geo.properties.name,
+                      count,
+                      breakdown,
+                    })
+                  }
+                  onMouseMove={(event) =>
+                    setTooltip((current) =>
+                      current
+                        ? { ...current, x: event.clientX, y: event.clientY }
+                        : current
+                    )
+                  }
+                  onMouseLeave={() => setTooltip(null)}
+                  style={{
+                    default: {
+                      fill: isSelected ? "#2563eb" : colorScale(count),
+                      stroke: "#fff",
+                      strokeWidth: 0.5,
+                      outline: "none",
+                    },
+                    hover: {
+                      fill: "#3b82f6",
+                      stroke: "#fff",
+                      strokeWidth: 1,
+                      outline: "none",
+                      cursor: "pointer",
+                    },
+                    pressed: { outline: "none" },
+                  }}
+                />
+              );
+            })
+          }
+        </Geographies>
+      </ComposableMap>
+
+      <div className="map-legend" aria-label="Recall activity color scale">
+        <div className="legend-scale" />
+        <div className="legend-labels">
+          <span>0</span>
+          <span>{maxCount.toLocaleString()}</span>
+        </div>
+        <div className="legend-caption">Low to high recall activity</div>
+      </div>
+
+      {tooltip && (
+        <div
+          className="map-tooltip"
+          style={{ left: tooltip.x + 14, top: tooltip.y + 14 }}
+        >
+          <strong>
+            {tooltip.stateName} ({tooltip.stateCode})
+          </strong>
+          <span>{tooltip.count.toLocaleString()} total recalls</span>
+          <div className="tooltip-breakdown">
+            {Object.entries(CLASS_COLORS).map(([classification, color]) => (
+              <span key={classification} style={{ color }}>
+                {classification}: {tooltip.breakdown[classification] || 0}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -17,6 +17,9 @@ function App() {
     state: null,
     status: "Ongoing",
   });
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem("recallradar-theme") === "dark";
+  });
   const [loading, setLoading] = useState(true);
 
   const fetchRecalls = useCallback(async () => {
@@ -55,6 +58,10 @@ function App() {
     fetchStats();
   }, [fetchStats]);
 
+  useEffect(() => {
+    localStorage.setItem("recallradar-theme", darkMode ? "dark" : "light");
+  }, [darkMode]);
+
   const handleStateClick = (stateCode) => {
     setFilters((prev) => ({
       ...prev,
@@ -63,12 +70,24 @@ function App() {
   };
 
   return (
-    <div className="app">
+    <div className={`app ${darkMode ? "dark-mode" : ""}`}>
       <header className="app-header">
-        <h1>RecallRadar</h1>
-        <p className="subtitle">
-          Real-time FDA food recall intelligence across the United States
-        </p>
+        <div className="header-content">
+          <div>
+            <h1>RecallRadar</h1>
+            <p className="subtitle">
+              Real-time FDA food recall intelligence across the United States
+            </p>
+          </div>
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={() => setDarkMode((current) => !current)}
+            aria-pressed={darkMode}
+          >
+            {darkMode ? "Light Mode" : "Dark Mode"}
+          </button>
+        </div>
       </header>
 
       <FilterBar filters={filters} onChange={setFilters} />
@@ -77,13 +96,14 @@ function App() {
         <section className="map-section">
           <RecallMap
             stats={stats}
+            recalls={recalls}
             selectedState={filters.state}
             onStateClick={handleStateClick}
           />
         </section>
 
         <aside className="sidebar">
-          <StatsPanel stats={stats} loading={!stats} />
+          <StatsPanel stats={stats} recalls={recalls} loading={!stats} />
           <RecallFeed recalls={recalls} loading={loading} />
         </aside>
       </main>
