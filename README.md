@@ -1,6 +1,6 @@
-# RecallRadar
+# RecallRadar — Real-Time FDA Recall Intelligence
 
-> A real-time recall intelligence platform that ingests FDA food recall data, maps geographic impact across the United States, and surfaces insights about recall severity, frequency, and trends that nobody else aggregates.
+A personal serverless project that ingests FDA food recall data from openFDA, maps geographic impact across the United States, and surfaces insights about recall severity, frequency, and trends that nobody else aggregates in one place.
 
 ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)
 ![React](https://img.shields.io/badge/React-61DAFB?style=flat&logo=react&logoColor=black)
@@ -11,14 +11,36 @@
 ![EventBridge](https://img.shields.io/badge/EventBridge-FF4F8B?style=flat&logo=amazon-aws&logoColor=white)
 ![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=flat&logo=terraform&logoColor=white)
 
-## Demo
+## 📋 Table of Contents
 
-<!-- Add dashboard-demo.gif after capturing — see images/README.md -->
-<!-- ![Dashboard demo](./images/dashboard-demo.gif) -->
+- [Overview](#-overview)
+- [Architecture](#️-architecture)
+- [Features](#-features)
+- [Configuration](#️-configuration)
+- [Usage](#-usage)
+- [Project Structure](#-project-structure)
+- [Key Design Decisions](#-key-design-decisions)
+- [Cost](#-cost)
+- [Future Improvements](#-future-improvements)
+- [Data Source](#-data-source)
 
-Live dashboard URL: run `terraform output cloudfront_url` after deploy.
+## 🎯 Overview
 
-## Architecture
+RecallRadar started as a passion project to answer a simple question: when the FDA publishes a food recall, where does it actually land, and how serious is it? Public recall notices are scattered across FDA pages and raw API dumps. I wanted a single view — an interactive map, a live feed, and aggregate stats — updated automatically without babysitting a server.
+
+The stack is fully serverless on AWS: scheduled Lambda ingestion, DynamoDB storage, a REST API, and a React dashboard behind CloudFront. Terraform manages all infrastructure. It runs in my personal AWS account in `us-east-1` and costs roughly **$3/month**.
+
+### Workflow
+
+1. **Scheduled ingestion** — EventBridge Scheduler invokes the ingestion Lambda every 6 hours.
+2. **openFDA fetch** — The Lambda paginates through the [openFDA food enforcement API](https://open.fda.gov/apis/food/enforcement/) for recalls within a 90-day lookback window.
+3. **Normalize and parse** — Each record is normalized to a DynamoDB item. The free-text `distribution_pattern` field is parsed into structured `affected_states` and an `is_nationwide` flag.
+4. **Idempotent storage** — Records are keyed by FDA `recall_number`. Re-running ingestion overwrites existing items — no duplicates.
+5. **Query API** — API Gateway routes GET requests to the query Lambda, which reads from DynamoDB with GSI-backed queries or scans.
+6. **Dashboard** — A React app on CloudFront calls the API from the browser. The map colors states by recall volume; clicking a state filters the feed.
+7. **Monitoring** — A CloudWatch dashboard tracks Lambda invocations, errors, duration, DynamoDB capacity, API 5xx, and DLQ depth. SNS alarms fire on ingestion errors and DLQ messages.
+
+## 🏗️ Architecture
 
 ![RecallRadar Architecture](./images/Recall-Radar_Architecture.png)
 
@@ -73,73 +95,69 @@ EventBridge Scheduler (every 6 hours)
 ┌─────────────────────────┐       ┌──────────────────────┐
 │  CloudFront CDN         │◀──────│  S3 Bucket           │
 │                         │       │  (React build files)  │
-│  recallradar-*.cloud    │       │                      │
-│  front.net              │       │  index.html          │
-└─────────────────────────┘       │  static/js/          │
-                                  │  static/css/         │
-        Dashboard features:       └──────────────────────┘
-        • Interactive US state map (color-coded by recall volume)
-        • Live recall feed with severity badges
-        • Stats panel (total active, by classification, top firms)
-        • Filter by state, classification, status
+└─────────────────────────┘       └──────────────────────┘
 ```
 
-## How it works
+### Data Flow
 
-1. **Scheduled ingestion** — EventBridge Scheduler invokes the ingestion Lambda every 6 hours (with a 15-minute flexible window). Failed invocations land in an SQS dead-letter queue.
+1. **EventBridge Scheduler** triggers the ingestion Lambda on a 6-hour cadence (with a 15-minute flexible window). Failed invocations land in an SQS dead-letter queue.
+2. **Ingestion Lambda** fetches recall records from openFDA, parses geographic distribution from free-text fields, and writes normalized items to DynamoDB. Individual write failures are logged without aborting the batch.
+3. **Query Lambda** serves filtered recall lists and aggregate stats from DynamoDB via API Gateway.
+4. **CloudFront** serves the React dashboard from a private S3 bucket using Origin Access Control.
 
-2. **openFDA fetch** — The Lambda paginates through the [openFDA food enforcement API](https://open.fda.gov/apis/food/enforcement/), requesting recalls within a configurable lookback window (default 90 days).
+### Components
 
-3. **Normalize and parse** — Each record is normalized to a DynamoDB item. The free-text `distribution_pattern` field is parsed with regex into structured `affected_states` and an `is_nationwide` flag. Individual write failures are logged without aborting the batch.
+- **Ingestion Lambda** — Polls openFDA, parses state distribution, writes to DynamoDB
+- **Query Lambda** — Filters, paginates, and aggregates recall data for the API
+- **DynamoDB** — Primary store keyed by `recall_number` with GSIs for classification, source, and status
+- **API Gateway** — REST endpoints for recalls list, stats, and single-recall lookup
+- **CloudFront + S3** — Hosts the React dashboard with a private bucket policy
+- **EventBridge Scheduler** — Drives periodic ingestion
+- **CloudWatch + SNS** — Operational dashboard and email alarms
 
-4. **Idempotent storage** — Records are keyed by FDA `recall_number` (PK) and `source#report_date` (SK). Re-running ingestion overwrites existing items — no duplicates.
+## ✨ Features
 
-5. **Query API** — API Gateway routes GET requests to the query Lambda, which reads from DynamoDB with GSI-backed queries (classification) or scans (state filter, stats).
+- 🗺️ **Interactive US map** — States color-coded by recall volume; click to filter the feed
+- 📋 **Live recall feed** — Severity badges, firm names, product descriptions, and distribution details
+- 📊 **Stats panel** — Total active recalls, classification breakdown, and top recalling firms
+- 🔍 **Multi-axis filtering** — Filter by state, FDA classification, and recall status
+- 🔄 **Automated ingestion** — Scheduled polling of openFDA with idempotent deduplication
+- 📍 **State parsing** — Regex extraction of affected states from free-text distribution patterns
+- 🔔 **Operational monitoring** — CloudWatch dashboard and SNS alarms for ingestion failures
 
-6. **Dashboard** — A React app on CloudFront calls the API from the browser. The map colors states by recall volume; clicking a state filters the feed. A stats panel shows classification breakdowns and top recalling firms.
+## ⚙️ Configuration
 
-7. **Monitoring** — A CloudWatch dashboard tracks Lambda invocations, errors, duration, DynamoDB capacity, API 5xx, and DLQ depth. SNS alarms fire on ingestion errors and DLQ messages.
+Key Terraform variables in `terraform/variables.tf`:
 
-## Key design decisions
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `aws_region` | AWS region for all resources | `us-east-1` |
+| `table_name` | DynamoDB table name | `recallradar-recalls` |
+| `ingestion_lookback_days` | Days of recall history to fetch from openFDA | `90` |
+| `ingestion_schedule_expression` | How often ingestion runs | `rate(6 hours)` |
+| `api_stage_name` | API Gateway deployment stage | `v1` |
+| `alarm_email` | SNS email for CloudWatch alarms | `""` |
 
-| Decision | Why |
-|----------|-----|
-| `recall_number` as DynamoDB PK | Natural idempotency — re-running ingestion never creates duplicates. Same pattern as stateful deduplication in production alert systems. |
-| On-demand DynamoDB capacity | Write pattern is bursty (batch after each API poll) with long idle periods between. Provisioned capacity would waste money on a system that writes once every 6 hours. |
-| 6-hour polling instead of continuous | openFDA updates weekly. Polling every 15 min = 672 invocations to catch 1 update. 6 hours = 28 invocations. Operational efficiency over aggressive freshness. |
-| OAC over public S3 bucket | CloudFront Origin Access Control keeps the S3 bucket private. The dashboard is served through the CDN only — no public bucket policy. |
-| State parsing as a Python function, not Bedrock | `distribution_pattern` has limited patterns — regex handles 95% of cases. Calling Bedrock for string parsing at ingestion time adds cost and latency that isn't justified. AI enrichment targets higher-value analysis like risk scoring. |
-| Scan for stats endpoint (Phase 1) | Full table scan is acceptable when the table has < 30K items and the stats endpoint is called infrequently. DynamoDB Streams + precomputed aggregations replace this before scale matters. |
+## 📖 Usage
 
-## Screenshots
+Ingestion runs automatically every 6 hours via EventBridge Scheduler — no manual intervention needed under normal operation.
 
-Capture instructions are in [`images/README.md`](./images/README.md).
+The dashboard is served from CloudFront and calls the API Gateway endpoints directly from the browser. The map, feed, and stats panel update on each page load and filter interaction.
 
-| Asset | Description |
-|-------|-------------|
-| Dashboard GIF | Map + feed + filters in action |
-| CloudWatch dashboard | 24h+ healthy operation metrics |
-| DynamoDB table | Populated recall items |
-| EventBridge schedule | 6-hour ingestion trigger |
-| API Gateway resources | `/recalls` route tree |
+API endpoint details are documented in [`docs/API.md`](./docs/API.md).
 
-<!-- Uncomment after capturing assets:
-![Dashboard demo](./images/dashboard-demo.gif)
-![CloudWatch dashboard](./images/cloudwatch-dashboard.png)
--->
-
-## Project structure
+## 📁 Project Structure
 
 ```
 RecallRadar/
 ├── lambda/
-│   ├── ingestion/          openFDA → DynamoDB ingestion handler
-│   ├── query/              API query handler
-│   ├── shared/             State parsing + geocoding constants
-│   └── tests/              Unit tests for state parsing
+│   ├── ingestion/          # openFDA → DynamoDB ingestion handler
+│   ├── query/              # API query handler
+│   ├── shared/             # State parsing + geocoding constants
+│   └── tests/              # Unit tests for state parsing
 ├── dashboard/
-│   ├── src/components/     RecallMap, RecallFeed, StatsPanel, FilterBar
-│   └── src/App.js          Main dashboard layout
+│   ├── src/components/     # RecallMap, RecallFeed, StatsPanel, FilterBar
+│   └── src/App.js          # Main dashboard layout
 ├── terraform/
 │   ├── main.tf
 │   ├── variables.tf
@@ -152,93 +170,25 @@ RecallRadar/
 │       ├── dashboard_hosting/
 │       └── monitoring/
 ├── scripts/
-│   └── deploy-dashboard.sh Build and sync dashboard to S3 + CloudFront
+│   └── deploy-dashboard.sh # Build and sync dashboard to S3 + CloudFront
 ├── docs/
-│   └── API.md              REST API reference
-├── images/                 Portfolio screenshots and demo GIFs
+│   └── API.md              # REST API reference
+├── images/                 # Architecture diagram and screenshots
 └── README.md
 ```
 
-## Prerequisites
+## 💡 Key Design Decisions
 
-- [Terraform](https://www.terraform.io/downloads) >= 1.5
-- [AWS CLI](https://aws.amazon.com/cli/) configured with credentials for `us-east-1`
-- [Node.js](https://nodejs.org/) 18+ (dashboard build)
-- Python 3.12+ (local Lambda development and tests)
+| Decision | Why |
+|----------|-----|
+| `recall_number` as DynamoDB PK | Natural idempotency — re-running ingestion never creates duplicates. Same pattern as stateful deduplication in production alert systems. |
+| On-demand DynamoDB capacity | Write pattern is bursty (batch after each API poll) with long idle periods between. Provisioned capacity would waste money on a system that writes once every 6 hours. |
+| 6-hour polling instead of continuous | openFDA updates weekly. Polling every 15 min = 672 invocations to catch 1 update. 6 hours = 28 invocations. Operational efficiency over aggressive freshness. |
+| OAC over public S3 bucket | CloudFront Origin Access Control keeps the S3 bucket private. The dashboard is served through the CDN only — no public bucket policy. |
+| State parsing as a Python function, not Bedrock | `distribution_pattern` has limited patterns — regex handles 95% of cases. Calling Bedrock for string parsing at ingestion time adds cost and latency that isn't justified. AI enrichment targets higher-value analysis like risk scoring. |
+| Scan for stats endpoint (Phase 1) | Full table scan is acceptable when the table has < 30K items and the stats endpoint is called infrequently. DynamoDB Streams + precomputed aggregations replace this before scale matters. |
 
-## Deploy
-
-```bash
-cd terraform
-cp terraform.tfvars.example terraform.tfvars   # optional: customize variables
-terraform init
-terraform plan
-terraform apply
-```
-
-After apply, Terraform prints the DynamoDB table name, API invoke URL, CloudFront dashboard URL, and example curl commands.
-
-Set `alarm_email` in `terraform.tfvars` to receive CloudWatch alarm notifications (confirm the SNS subscription in your inbox).
-
-### Deploy the dashboard
-
-```bash
-chmod +x scripts/deploy-dashboard.sh
-./scripts/deploy-dashboard.sh
-```
-
-Or run the one-liner from `terraform output dashboard_deploy_command`.
-
-For local development:
-
-```bash
-cd dashboard
-cp .env.example .env.local   # set REACT_APP_API_URL to your API Gateway URL
-npm install
-npm start
-```
-
-### Manual ingestion test
-
-```bash
-aws lambda invoke \
-  --function-name recallradar-ingestion \
-  --payload '{}' \
-  /tmp/recallradar-ingestion-response.json
-
-cat /tmp/recallradar-ingestion-response.json
-```
-
-### API test
-
-```bash
-# Replace with api_gateway_invoke_url from terraform output
-curl "$(terraform -chdir=terraform output -raw api_gateway_invoke_url)/recalls?limit=5"
-curl "$(terraform -chdir=terraform output -raw api_gateway_invoke_url)/recalls/stats"
-```
-
-Full API documentation: [`docs/API.md`](./docs/API.md).
-
-## Local tests
-
-```bash
-python -m pytest lambda/tests/ -v
-```
-
-## Configuration
-
-Key Terraform variables (see `terraform/variables.tf`):
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `aws_region` | `us-east-1` | AWS region for all resources |
-| `table_name` | `recallradar-recalls` | DynamoDB table name |
-| `ingestion_lookback_days` | `90` | Days of recall history to fetch from openFDA |
-| `ingestion_schedule_expression` | `rate(6 hours)` | How often ingestion runs |
-| `api_stage_name` | `v1` | API Gateway deployment stage |
-| `alarm_email` | `""` | SNS email for CloudWatch alarms |
-
-## Cost
+## 💰 Cost
 
 Phase 1 runs for approximately **$3/month** — mostly CloudWatch dashboard and alarms. Lambda, DynamoDB, API Gateway, EventBridge, S3, and CloudFront stay within free tier at typical usage.
 
@@ -251,7 +201,7 @@ Phase 1 runs for approximately **$3/month** — mostly CloudWatch dashboard and 
 | S3 + CloudFront | Static dashboard | ~$0.01 |
 | CloudWatch | Dashboard + 2 alarms | ~$3.00 |
 
-## Future improvements
+## 🔮 Future Improvements
 
 Planned extensions that layer on top of Phase 1 without refactoring the core pipeline:
 
@@ -262,7 +212,7 @@ Planned extensions that layer on top of Phase 1 without refactoring the core pip
 - **Phase 6 — Predictive analytics** — Correlate recall patterns with FDA inspection data
 - **Real-time feed** — WebSocket API for live dashboard updates without polling
 
-## Data source
+## 📡 Data Source
 
 Recall data comes from the [openFDA food enforcement API](https://open.fda.gov/apis/food/enforcement/). FDA classifications:
 
