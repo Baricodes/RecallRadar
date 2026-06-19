@@ -20,6 +20,8 @@ Live dashboard URL: run `terraform output cloudfront_url` after deploy.
 
 ## Architecture
 
+![RecallRadar Architecture](./images/Recall-Radar_Architecture.png)
+
 ```
 EventBridge Scheduler (every 6 hours)
         │
