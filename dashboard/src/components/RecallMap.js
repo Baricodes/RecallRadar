@@ -5,13 +5,23 @@ import {
   Geography,
 } from "react-simple-maps";
 import { scaleQuantize } from "d3-scale";
+import { interpolateViridis } from "d3-scale-chromatic";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json";
+const MAP_COLOR_STOPS = Array.from({ length: 7 }, (_, index) =>
+  interpolateViridis(index / 6)
+);
 
 const CLASS_COLORS = {
   "Class I": "#dc2626",
   "Class II": "#ea580c",
   "Class III": "#ca8a04",
+};
+
+const CLASS_LABELS = {
+  "Class I": "High Risk",
+  "Class II": "Medium Risk",
+  "Class III": "Low Risk",
 };
 
 const FIPS_TO_STATE = {
@@ -64,10 +74,7 @@ export function RecallMap({ stats, recalls = [], selectedState, onStateClick }) 
     const max = Math.max(...values, 1);
     return scaleQuantize()
       .domain([0, max])
-      .range([
-        "#fee5d9", "#fcbba1", "#fc9272",
-        "#fb6a4a", "#ef3b2c", "#cb181d", "#99000d",
-      ]);
+      .range(MAP_COLOR_STOPS);
   }, [stateCounts]);
 
   return (
@@ -128,12 +135,17 @@ export function RecallMap({ stats, recalls = [], selectedState, onStateClick }) 
       </ComposableMap>
 
       <div className="map-legend" aria-label="Recall activity color scale">
-        <div className="legend-scale" />
+        <div
+          className="legend-scale"
+          style={{
+            background: `linear-gradient(90deg, ${MAP_COLOR_STOPS.join(", ")})`,
+          }}
+        />
         <div className="legend-labels">
           <span>0</span>
           <span>{maxCount.toLocaleString()}</span>
         </div>
-        <div className="legend-caption">Low to high recall activity</div>
+        <div className="legend-caption">Fewer to more recent recalls</div>
       </div>
 
       {tooltip && (
@@ -148,7 +160,7 @@ export function RecallMap({ stats, recalls = [], selectedState, onStateClick }) 
           <div className="tooltip-breakdown">
             {Object.entries(CLASS_COLORS).map(([classification, color]) => (
               <span key={classification} style={{ color }}>
-                {classification}: {tooltip.breakdown[classification] || 0}
+                {CLASS_LABELS[classification]}: {tooltip.breakdown[classification] || 0}
               </span>
             ))}
           </div>

@@ -17,6 +17,12 @@ from shared.state_coordinates import STATE_COORDINATES
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+CLASSIFICATION_WEIGHTS = {
+    "Class I": 3,
+    "Class II": 2,
+    "Class III": 1,
+}
+
 TABLE_NAME = os.environ.get("TABLE_NAME", "recallradar-recalls")
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE_NAME)
@@ -131,7 +137,7 @@ def get_recall_stats() -> dict:
     """
     items = []
     scan_kwargs = {
-        "ProjectionExpression": "classification, #s, recalling_firm, affected_states, is_nationwide, report_date",
+        "ProjectionExpression": "classification, #s, recalling_firm, affected_states, is_nationwide, report_date, ingested_at",
         "ExpressionAttributeNames": {"#s": "status"},
     }
 
@@ -145,6 +151,20 @@ def get_recall_stats() -> dict:
     classification_counts = Counter(item.get("classification", "Unknown") for item in items)
     status_counts = Counter(item.get("status", "Unknown") for item in items)
     firm_counts = Counter(item.get("recalling_firm", "Unknown") for item in items)
+    firm_classification_counts = {}
+    latest_ingested_at = None
+
+    for item in items:
+        firm_name = item.get("recalling_firm", "Unknown")
+        classification = item.get("classification", "Unknown")
+        ingested_at = item.get("ingested_at")
+
+        if firm_name not in firm_classification_counts:
+            firm_classification_counts[firm_name] = Counter()
+        firm_classification_counts[firm_name][classification] += 1
+
+        if ingested_at and (latest_ingested_at is None or ingested_at > latest_ingested_at):
+            latest_ingested_at = ingested_at
 
     state_counts = Counter()
     for item in items:
@@ -152,12 +172,29 @@ def get_recall_stats() -> dict:
             state_counts[st] += 1
 
     nationwide_count = sum(1 for item in items if item.get("is_nationwide"))
+    top_firms_by_severity = sorted(
+        (
+            {
+                "firm": firm_name,
+                "severity_score": sum(
+                    count * CLASSIFICATION_WEIGHTS.get(classification, 0)
+                    for classification, count in classifications.items()
+                ),
+                "total_recalls": sum(classifications.values()),
+                "by_classification": dict(classifications),
+            }
+            for firm_name, classifications in firm_classification_counts.items()
+        ),
+        key=lambda firm: (firm["severity_score"], firm["total_recalls"], firm["firm"]),
+        reverse=True,
+    )[:10]
 
     return {
         "total_recalls": len(items),
         "by_classification": dict(classification_counts),
         "by_status": dict(status_counts),
         "top_firms": dict(firm_counts.most_common(10)),
+        "top_firms_by_severity": top_firms_by_severity,
         "top_states": dict(state_counts.most_common(10)),
         "state_counts": dict(state_counts),
         "nationwide_count": nationwide_count,
@@ -165,6 +202,7 @@ def get_recall_stats() -> dict:
             (nationwide_count / len(items) * 100) if items else 0, 1
         ),
         "state_coordinates": STATE_COORDINATES,
+        "latest_ingested_at": latest_ingested_at,
     }
 
 

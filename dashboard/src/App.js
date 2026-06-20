@@ -12,6 +12,7 @@ const API_BASE =
 function App() {
   const [recalls, setRecalls] = useState([]);
   const [stats, setStats] = useState(null);
+  const [lastDataSyncAt, setLastDataSyncAt] = useState(null);
   const [filters, setFilters] = useState({
     classification: null,
     state: null,
@@ -33,7 +34,14 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/recalls?${params}`);
       const data = await res.json();
-      setRecalls(data.recalls || []);
+      const fetchedRecalls = data.recalls || [];
+      setRecalls(fetchedRecalls);
+      setLastDataSyncAt((current) => {
+        const latestIngestedAt = getLatestIngestedAt(fetchedRecalls);
+        return latestIngestedAt && (!current || latestIngestedAt > current)
+          ? latestIngestedAt
+          : current;
+      });
     } catch (err) {
       console.error("Failed to fetch recalls:", err);
     }
@@ -45,6 +53,9 @@ function App() {
       const res = await fetch(`${API_BASE}/recalls/stats`);
       const data = await res.json();
       setStats(data);
+      if (data.latest_ingested_at) {
+        setLastDataSyncAt(data.latest_ingested_at);
+      }
     } catch (err) {
       console.error("Failed to fetch stats:", err);
     }
@@ -73,10 +84,11 @@ function App() {
     <div className={`app ${darkMode ? "dark-mode" : ""}`}>
       <header className="app-header">
         <div className="header-content">
-          <div>
-            <h1>RecallRadar</h1>
+          <div className="hero-copy">
+            <p className="eyebrow">FDA food recall tracker</p>
+            <h1>Find food recalls that may affect you.</h1>
             <p className="subtitle">
-              Real-time FDA food recall intelligence across the United States
+              Search recent FDA food recalls by product, company, state, or recall reason.
             </p>
           </div>
           <button
@@ -93,22 +105,86 @@ function App() {
       <FilterBar filters={filters} onChange={setFilters} />
 
       <main className="dashboard">
-        <section className="map-section">
-          <RecallMap
-            stats={stats}
+        <section className="main-column" aria-label="Food recall search results">
+          <RecallFeed
             recalls={recalls}
-            selectedState={filters.state}
-            onStateClick={handleStateClick}
+            loading={loading}
+            lastUpdatedAt={lastDataSyncAt}
           />
+
+          <section className="map-section" aria-label="Where recalls are happening">
+            <div className="section-heading">
+              <p className="eyebrow">By location</p>
+              <h2>Where recalls are happening</h2>
+              <p>
+                Select a state to focus the recall list. Darker states have more
+                recent recall activity.
+              </p>
+            </div>
+            <RecallMap
+              stats={stats}
+              recalls={recalls}
+              selectedState={filters.state}
+              onStateClick={handleStateClick}
+            />
+          </section>
+
+          <section className="help-section" aria-label="Food recall help">
+            <article className="guide-card">
+              <h2>How Food Recall Risk Works</h2>
+              <p>
+                FDA recall classes describe how likely a recalled product is to
+                cause harm. RecallRadar translates those classes into plain risk
+                levels so you can scan quickly and open a recall for details.
+              </p>
+              <div className="class-guide">
+                <h3>Risk Levels</h3>
+                <ul>
+                  <li>
+                    <strong>High Risk</strong> means a Class I recall with a
+                    reasonable chance of serious health consequences or death.
+                  </li>
+                  <li>
+                    <strong>Medium Risk</strong> means a Class II recall where
+                    temporary or medically reversible health effects are possible.
+                  </li>
+                  <li>
+                    <strong>Low Risk</strong> means a Class III recall that is not
+                    likely to cause adverse health consequences.
+                  </li>
+                </ul>
+              </div>
+            </article>
+
+            <article className="guide-card">
+              <h2>How To Use This Site</h2>
+              <p>
+                Start by searching for a product, company, state, or recall reason.
+                Use the filters to narrow the list, then open a recall to see why it
+                was announced and where the product was distributed.
+              </p>
+              <p>
+                The map and summary cards are there for context: they help you spot
+                where recall activity is concentrated without having to read every
+                recall first.
+              </p>
+            </article>
+          </section>
         </section>
 
         <aside className="sidebar">
           <StatsPanel stats={stats} recalls={recalls} loading={!stats} />
-          <RecallFeed recalls={recalls} loading={loading} />
         </aside>
       </main>
     </div>
   );
+}
+
+function getLatestIngestedAt(recalls) {
+  return recalls.reduce((latest, recall) => {
+    const ingestedAt = recall.ingested_at;
+    return ingestedAt && (!latest || ingestedAt > latest) ? ingestedAt : latest;
+  }, null);
 }
 
 export default App;

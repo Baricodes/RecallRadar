@@ -136,6 +136,18 @@ curl "${API_URL}/recalls/stats"
     "Example Foods Inc.": 12,
     "Another Brand LLC": 8
   },
+  "top_firms_by_severity": [
+    {
+      "firm": "Example Foods Inc.",
+      "severity_score": 18,
+      "total_recalls": 8,
+      "by_classification": {
+        "Class I": 3,
+        "Class II": 4,
+        "Class III": 1
+      }
+    }
+  ],
   "top_states": {
     "CA": 450,
     "TX": 380,
@@ -147,6 +159,7 @@ curl "${API_URL}/recalls/stats"
   },
   "nationwide_count": 95,
   "nationwide_percentage": 7.6,
+  "latest_ingested_at": "2026-06-20T16:30:00+00:00",
   "state_coordinates": {
     "AL": [-86.9023, 32.3182],
     "AK": [-152.4044, 61.3707]
@@ -160,10 +173,12 @@ curl "${API_URL}/recalls/stats"
 | `by_classification` | Count per FDA class |
 | `by_status` | Count per recall status |
 | `top_firms` | Top 10 recalling firms by recall count |
+| `top_firms_by_severity` | Top 10 recalling firms by weighted severity score (`Class I × 3`, `Class II × 2`, `Class III × 1`) |
 | `top_states` | Top 10 states by affected-recall count |
 | `state_counts` | Full map of state code → recall count |
 | `nationwide_count` | Recalls flagged as nationwide distribution |
 | `nationwide_percentage` | Percentage of total recalls that are nationwide |
+| `latest_ingested_at` | Most recent ingestion timestamp across recalled records |
 | `state_coordinates` | Longitude/latitude pairs for map rendering |
 
 ---

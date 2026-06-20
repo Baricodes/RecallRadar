@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -14,7 +14,32 @@ const CLASS_COLORS = {
   "Class III": "#ca8a04",
 };
 
+const CLASS_LABELS = {
+  "Class I": "High Risk",
+  "Class II": "Medium Risk",
+  "Class III": "Low Risk",
+};
+
+const FIRM_RANKING_MODES = {
+  count: {
+    label: "Most Recalls",
+    metricLabel: "Recalls",
+  },
+  severity: {
+    label: "Highest Risk",
+    metricLabel: "Severity Score",
+  },
+};
+
 export function StatsPanel({ stats, recalls = [], loading }) {
+  const [firmRankingMode, setFirmRankingMode] = useState("count");
+  const firmDetails = useMemo(() => buildFirmDetails(recalls), [recalls]);
+  const firmData = useMemo(
+    () => buildFirmData(stats, firmDetails, firmRankingMode),
+    [firmDetails, firmRankingMode, stats]
+  );
+  const metricLabel = FIRM_RANKING_MODES[firmRankingMode].metricLabel;
+
   if (loading || !stats) {
     return <div className="stats-loading">Loading stats...</div>;
   }
@@ -23,33 +48,24 @@ export function StatsPanel({ stats, recalls = [], loading }) {
     ([name, value]) => ({ name, value })
   );
   const classTotal = classData.reduce((sum, item) => sum + item.value, 0);
-  const firmDetails = buildFirmDetails(recalls);
-
-  const firmData = Object.entries(stats.top_firms || {})
-    .slice(0, 5)
-    .map(([name, value]) => ({
-      name: name.length > 20 ? name.slice(0, 18) + "..." : name,
-      fullName: name,
-      value,
-      details: firmDetails[name],
-    }));
 
   return (
     <div className="stats-panel">
-      <h2>Overview</h2>
+      <p className="eyebrow">Quick context</p>
+      <h2>Recall Snapshot</h2>
 
       <div className="stat-cards">
         <div className="stat-card">
           <span className="stat-number">
             {stats.total_recalls?.toLocaleString()}
           </span>
-          <span className="stat-label">Total Recalls</span>
+          <span className="stat-label">Recent recalls</span>
         </div>
         <div className="stat-card">
           <span className="stat-number">
             {stats.by_classification?.["Class I"] || 0}
           </span>
-          <span className="stat-label critical">Class I (Critical)</span>
+          <span className="stat-label critical">High-risk recalls</span>
         </div>
         <div className="stat-card">
           <span className="stat-number">{stats.nationwide_percentage}%</span>
@@ -57,14 +73,14 @@ export function StatsPanel({ stats, recalls = [], loading }) {
             className="stat-label"
             title="Percentage of recalls distributed across all 50 states."
           >
-            Nationwide Scope
+            Nationwide recalls
           </span>
         </div>
       </div>
 
       <div className="classification-summary">
         <div className="classification-summary-header">
-          <h3>By Classification</h3>
+          <h3>By Risk Level</h3>
           <span>{classTotal.toLocaleString()} recalls</span>
         </div>
         <div className="classification-stack" aria-label="Recall classification breakdown">
@@ -78,7 +94,7 @@ export function StatsPanel({ stats, recalls = [], loading }) {
                   width: `${width}%`,
                   background: CLASS_COLORS[entry.name] || "#888",
                 }}
-                title={`${entry.name}: ${entry.value.toLocaleString()}`}
+                title={`${CLASS_LABELS[entry.name] || entry.name}: ${entry.value.toLocaleString()}`}
               >
                 {width >= 16 ? entry.value.toLocaleString() : ""}
               </div>
@@ -92,23 +108,47 @@ export function StatsPanel({ stats, recalls = [], loading }) {
                 className="legend-dot"
                 style={{ background: CLASS_COLORS[entry.name] || "#888" }}
               />
-              {entry.name}: {entry.value.toLocaleString()}
+              {CLASS_LABELS[entry.name] || entry.name}: {entry.value.toLocaleString()}
             </span>
           ))}
         </div>
       </div>
 
-      <h3>Top Firms</h3>
-      <ResponsiveContainer width="100%" height={160}>
+      <div className="top-firms-header">
+        <h3>Companies With Recent Recalls</h3>
+        <div className="segmented-control" aria-label="Top firms ranking mode">
+          {Object.entries(FIRM_RANKING_MODES).map(([mode, config]) => (
+            <button
+              key={mode}
+              type="button"
+              className={firmRankingMode === mode ? "active" : ""}
+              onClick={() => setFirmRankingMode(mode)}
+              aria-pressed={firmRankingMode === mode}
+            >
+              {config.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={190}>
         <BarChart data={firmData} layout="vertical">
-          <XAxis type="number" hide />
+          <XAxis
+            type="number"
+            tick={{ fontSize: 10 }}
+            label={{
+              value: metricLabel,
+              position: "insideBottom",
+              offset: -2,
+            }}
+            height={34}
+          />
           <YAxis
             type="category"
             dataKey="name"
             width={100}
             tick={{ fontSize: 11 }}
           />
-          <Tooltip content={<FirmTooltip />} />
+          <Tooltip content={<FirmTooltip metricLabel={metricLabel} />} />
           <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} />
         </BarChart>
       </ResponsiveContainer>
@@ -116,7 +156,7 @@ export function StatsPanel({ stats, recalls = [], loading }) {
   );
 }
 
-function FirmTooltip({ active, payload }) {
+function FirmTooltip({ active, payload, metricLabel }) {
   if (!active || !payload?.length) return null;
 
   const firm = payload[0].payload;
@@ -125,7 +165,10 @@ function FirmTooltip({ active, payload }) {
   return (
     <div className="chart-tooltip">
       <strong>{firm.fullName}</strong>
-      <span>{firm.value.toLocaleString()} total recalls</span>
+      <span>
+        {firm.value.toLocaleString()} {metricLabel.toLowerCase()}
+      </span>
+      <span>{firm.totalRecalls.toLocaleString()} total recalls</span>
       {details ? (
         <>
           <span>
@@ -147,6 +190,42 @@ function FirmTooltip({ active, payload }) {
       )}
     </div>
   );
+}
+
+function buildFirmData(stats, firmDetails, firmRankingMode) {
+  if (!stats) return [];
+
+  if (firmRankingMode === "severity") {
+    return (stats.top_firms_by_severity || []).slice(0, 5).map((firm) => ({
+      name: truncateFirmName(firm.firm),
+      fullName: firm.firm,
+      value: firm.severity_score,
+      totalRecalls: firm.total_recalls,
+      details: firmDetails[firm.firm] || buildTooltipDetails(firm.by_classification),
+    }));
+  }
+
+  return Object.entries(stats.top_firms || {})
+    .slice(0, 5)
+    .map(([name, value]) => ({
+      name: truncateFirmName(name),
+      fullName: name,
+      value,
+      totalRecalls: value,
+      details: firmDetails[name],
+    }));
+}
+
+function buildTooltipDetails(classifications = {}) {
+  return {
+    classifications: {
+      "Class I": classifications["Class I"] || 0,
+      "Class II": classifications["Class II"] || 0,
+      "Class III": classifications["Class III"] || 0,
+    },
+    states: [],
+    products: [],
+  };
 }
 
 function buildFirmDetails(recalls) {
@@ -177,6 +256,10 @@ function buildFirmDetails(recalls) {
   });
 
   return details;
+}
+
+function truncateFirmName(name) {
+  return name.length > 20 ? name.slice(0, 18) + "..." : name;
 }
 
 function truncate(str, max) {

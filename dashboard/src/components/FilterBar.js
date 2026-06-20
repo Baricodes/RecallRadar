@@ -6,6 +6,12 @@ const SEVERITY_COLORS = {
   "Class III": "#ca8a04",
 };
 
+const SEVERITY_LABELS = {
+  "Class I": "High Risk",
+  "Class II": "Medium Risk",
+  "Class III": "Low Risk",
+};
+
 export function FilterBar({ filters, onChange }) {
   const update = (key, value) => {
     onChange((prev) => ({
@@ -17,7 +23,7 @@ export function FilterBar({ filters, onChange }) {
   return (
     <div className="filter-bar">
       <div className="filter-group">
-        <label>Severity</label>
+        <label>Risk level</label>
         <div className="filter-buttons">
           {["Class I", "Class II", "Class III"].map((cls) => (
             <button
@@ -27,7 +33,7 @@ export function FilterBar({ filters, onChange }) {
               style={{ "--severity-color": SEVERITY_COLORS[cls] }}
               onClick={() => update("classification", cls)}
             >
-              {cls}
+              {SEVERITY_LABELS[cls]}
             </button>
           ))}
         </div>
@@ -56,6 +62,7 @@ export function FilterBar({ filters, onChange }) {
             type="button"
             onClick={() => update("state", null)}
             className="clear-btn"
+            aria-label={`Clear ${filters.state} state filter`}
           >
             ×
           </button>
