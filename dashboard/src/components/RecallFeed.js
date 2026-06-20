@@ -8,15 +8,14 @@ const SEVERITY_COLORS = {
   "Class III": { bg: "#fefce8", border: "#ca8a04", text: "#854d0e", label: "Low Risk" },
 };
 
-const COMPACT_ROW_HEIGHT = 86;
-const EXPANDED_ROW_HEIGHT = 220;
+const COMPACT_ROW_HEIGHT = 110;
+const EXPANDED_ROW_HEIGHT = 250;
 const MAX_LIST_HEIGHT = 520;
 
 export function RecallFeed({ recalls, loading, lastUpdatedAt }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [stateFilter, setStateFilter] = useState("");
-  const [severityFilters, setSeverityFilters] = useState([]);
   const [expandedView, setExpandedView] = useState(false);
   const [expandedRows, setExpandedRows] = useState({});
   const [relativeUpdatedAt, setRelativeUpdatedAt] = useState(() =>
@@ -64,13 +63,10 @@ export function RecallFeed({ recalls, loading, lastUpdatedAt }) {
           .some((value) => value.toLowerCase().includes(searchTerm));
       const stateMatches =
         !stateFilter || (recall.affected_states || []).includes(stateFilter);
-      const severityMatches =
-        severityFilters.length === 0 ||
-        severityFilters.includes(recall.classification);
 
-      return searchMatches && stateMatches && severityMatches;
+      return searchMatches && stateMatches;
     });
-  }, [debouncedSearchQuery, recalls, severityFilters, stateFilter]);
+  }, [debouncedSearchQuery, recalls, stateFilter]);
 
   const rowHeight = useMemo(
     () => (index) => {
@@ -91,19 +87,17 @@ export function RecallFeed({ recalls, loading, lastUpdatedAt }) {
   const listKey = [
     debouncedSearchQuery,
     stateFilter,
-    severityFilters.join("|"),
     expandedView ? "expanded" : "compact",
   ].join("::");
 
-  if (loading) return <div className="feed-loading">Loading recalls...</div>;
-
-  const toggleSeverity = (classification) => {
-    setSeverityFilters((current) =>
-      current.includes(classification)
-        ? current.filter((item) => item !== classification)
-        : [...current, classification]
+  if (loading) {
+    return (
+      <div className="feed-loading" role="status">
+        <span className="loading-spinner" aria-hidden="true" />
+        Loading recalls...
+      </div>
     );
-  };
+  }
 
   const toggleRow = (recallId) => {
     setExpandedRows((current) => ({
@@ -154,25 +148,6 @@ export function RecallFeed({ recalls, loading, lastUpdatedAt }) {
             </option>
           ))}
         </select>
-        <div className="feed-severity-filters" aria-label="Filter by risk level">
-          {Object.keys(SEVERITY_COLORS).map((classification) => (
-            <button
-              key={classification}
-              type="button"
-              className={`severity-filter ${
-                severityFilters.includes(classification) ? "active" : ""
-              }`}
-              style={{
-                "--severity-color": SEVERITY_COLORS[classification].border,
-                "--severity-bg": SEVERITY_COLORS[classification].bg,
-                "--severity-text": SEVERITY_COLORS[classification].text,
-              }}
-              onClick={() => toggleSeverity(classification)}
-            >
-              {SEVERITY_COLORS[classification].label}
-            </button>
-          ))}
-        </div>
       </div>
 
       {filteredRecalls.length === 0 && (
@@ -215,12 +190,7 @@ function RecallRow({ index, style, recalls, expandedRows, expandedView, toggleRo
         className={`recall-card ${showDetails ? "expanded" : "compact"}`}
         style={{ borderLeft: `4px solid ${severity.border}` }}
       >
-        <button
-          type="button"
-          className="recall-row"
-          onClick={() => toggleRow(recallId)}
-          aria-expanded={showDetails}
-        >
+        <div className="recall-row">
           <span className="recall-row-main">
             <span
               className="severity-badge"
@@ -230,7 +200,7 @@ function RecallRow({ index, style, recalls, expandedRows, expandedView, toggleRo
             </span>
             <span className="recall-title-group">
               <span className="recall-product-title">
-                {truncate(recall.product_description, 84) || "Product not listed"}
+                {recall.product_description || "Product not listed"}
               </span>
               <span className="recall-firm">{recall.recalling_firm}</span>
             </span>
@@ -238,13 +208,24 @@ function RecallRow({ index, style, recalls, expandedRows, expandedView, toggleRo
           <span className="recall-row-meta">
             <span className="recall-date">{formatDate(recall.report_date)}</span>
             <span className="state-count">{stateCount}</span>
+            <button
+              type="button"
+              className="recall-details-toggle"
+              onClick={() => toggleRow(recallId)}
+              aria-expanded={showDetails}
+            >
+              {showDetails ? "Hide" : "Details"}
+            </button>
           </span>
-        </button>
+        </div>
 
         {showDetails && (
           <div className="recall-details">
             <p className="recall-reason">
               <strong>Reason:</strong> {truncate(recall.reason_for_recall, 180)}
+            </p>
+            <p className="recall-action">
+              <strong>What should I do?</strong> {getActionGuidance(recall)}
             </p>
             <p className="recall-product">
               <strong>FDA class:</strong> {recall.classification}
@@ -282,6 +263,18 @@ function formatRelativeTime(dateStr) {
 
 function getRecallId(recall) {
   return recall.PK || `${recall.recalling_firm}-${recall.report_date}`;
+}
+
+function getActionGuidance(recall) {
+  const scope = recall.is_nationwide
+    ? "This recall was distributed nationwide."
+    : "Check whether the product was distributed in your state.";
+
+  if (recall.classification === "Class I") {
+    return `${scope} If you may have this product, do not consume it and follow FDA or company instructions.`;
+  }
+
+  return `${scope} Compare the product details with items you have at home and follow FDA or company instructions.`;
 }
 
 function truncate(str, max) {

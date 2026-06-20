@@ -43,6 +43,26 @@ resource "aws_cloudfront_origin_access_control" "dashboard" {
   signing_protocol                  = "sigv4"
 }
 
+resource "aws_cloudfront_function" "api_rewrite" {
+  name    = "${var.project_name}-api-rewrite"
+  runtime = "cloudfront-js-1.0"
+  comment = "Rewrites /api requests to the API Gateway stage origin."
+  publish = true
+  code    = <<-EOT
+    function handler(event) {
+      var request = event.request;
+
+      if (request.uri === "/api") {
+        request.uri = "/";
+      } else if (request.uri.indexOf("/api/") === 0) {
+        request.uri = request.uri.substring(4);
+      }
+
+      return request;
+    }
+  EOT
+}
+
 resource "aws_cloudfront_distribution" "dashboard" {
   enabled             = true
   is_ipv6_enabled     = true
@@ -54,6 +74,24 @@ resource "aws_cloudfront_distribution" "dashboard" {
     domain_name              = aws_s3_bucket.dashboard.bucket_regional_domain_name
     origin_id                = "S3-${local.bucket_name}"
     origin_access_control_id = aws_cloudfront_origin_access_control.dashboard.id
+  }
+
+  origin {
+    domain_name = var.api_gateway_domain_name
+    origin_id   = "ApiGateway-${var.api_gateway_stage_name}"
+    origin_path = "/${var.api_gateway_stage_name}"
+
+    custom_header {
+      name  = "x-api-key"
+      value = var.api_gateway_api_key_value
+    }
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
   }
 
   default_cache_behavior {
@@ -74,6 +112,32 @@ resource "aws_cloudfront_distribution" "dashboard" {
     min_ttl     = 0
     default_ttl = 3600
     max_ttl     = 86400
+  }
+
+  ordered_cache_behavior {
+    path_pattern           = "/api/*"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "ApiGateway-${var.api_gateway_stage_name}"
+    viewer_protocol_policy = "redirect-to-https"
+    compress               = true
+
+    forwarded_values {
+      query_string = true
+
+      cookies {
+        forward = "none"
+      }
+    }
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.api_rewrite.arn
+    }
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
   }
 
   custom_error_response {

@@ -1,6 +1,8 @@
 # RecallRadar API Reference
 
-Base URL: output from `terraform output api_gateway_invoke_url` (e.g. `https://{api-id}.execute-api.us-east-1.amazonaws.com/v1`).
+Dashboard base URL: `/api` through the CloudFront distribution.
+
+Direct API Gateway base URL: output from `terraform output api_gateway_invoke_url` (e.g. `https://{api-id}.execute-api.us-east-1.amazonaws.com/v1`). Direct `GET` calls require the CloudFront API key and are not intended for browser use.
 
 All endpoints return JSON and include CORS headers for browser access from the CloudFront-hosted dashboard.
 
@@ -233,7 +235,7 @@ Access-Control-Allow-Methods: GET, OPTIONS
 Access-Control-Allow-Headers: Content-Type
 ```
 
-The React dashboard on CloudFront calls this API directly from the browser.
+The React dashboard calls `/api` on the CloudFront distribution. CloudFront forwards matching requests to API Gateway with the required API key header.
 
 ---
 

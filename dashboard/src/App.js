@@ -7,7 +7,7 @@ import "./App.css";
 
 const API_BASE =
   process.env.REACT_APP_API_URL ||
-  "https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/v1";
+  "/api";
 
 function App() {
   const [recalls, setRecalls] = useState([]);
@@ -129,45 +129,26 @@ function App() {
             />
           </section>
 
-          <section className="help-section" aria-label="Food recall help">
+          <section className="help-section compact" aria-label="Food recall help">
             <article className="guide-card">
-              <h2>How Food Recall Risk Works</h2>
+              <h2>What Do Risk Levels Mean?</h2>
               <p>
-                FDA recall classes describe how likely a recalled product is to
-                cause harm. RecallRadar translates those classes into plain risk
-                levels so you can scan quickly and open a recall for details.
+                FDA recall classes describe how likely a recalled product is to cause
+                harm. RecallRadar translates them into plain risk levels.
               </p>
               <div className="class-guide">
-                <h3>Risk Levels</h3>
                 <ul>
                   <li>
-                    <strong>High Risk</strong> means a Class I recall with a
-                    reasonable chance of serious health consequences or death.
+                    <strong>High Risk:</strong> serious health consequences are possible.
                   </li>
                   <li>
-                    <strong>Medium Risk</strong> means a Class II recall where
-                    temporary or medically reversible health effects are possible.
+                    <strong>Medium Risk:</strong> temporary or reversible health effects are possible.
                   </li>
                   <li>
-                    <strong>Low Risk</strong> means a Class III recall that is not
-                    likely to cause adverse health consequences.
+                    <strong>Low Risk:</strong> adverse health effects are unlikely.
                   </li>
                 </ul>
               </div>
-            </article>
-
-            <article className="guide-card">
-              <h2>How To Use This Site</h2>
-              <p>
-                Start by searching for a product, company, state, or recall reason.
-                Use the filters to narrow the list, then open a recall to see why it
-                was announced and where the product was distributed.
-              </p>
-              <p>
-                The map and summary cards are there for context: they help you spot
-                where recall activity is concentrated without having to read every
-                recall first.
-              </p>
             </article>
           </section>
         </section>

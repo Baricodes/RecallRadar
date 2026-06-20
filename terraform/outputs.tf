@@ -54,12 +54,12 @@ output "api_gateway_invoke_url" {
 }
 
 output "api_test_commands" {
-  description = "Example curl commands to test the API."
-  value = <<-EOT
-    curl "${module.api_gateway.invoke_url}/recalls?limit=5"
-    curl "${module.api_gateway.invoke_url}/recalls?classification=Class%20I&limit=5"
-    curl "${module.api_gateway.invoke_url}/recalls?state=LA&limit=10"
-    curl "${module.api_gateway.invoke_url}/recalls/stats"
+  description = "Example curl commands to test the API through CloudFront."
+  value       = <<-EOT
+    curl "${module.dashboard_hosting.cloudfront_url}/api/recalls?limit=5"
+    curl "${module.dashboard_hosting.cloudfront_url}/api/recalls?classification=Class%20I&limit=5"
+    curl "${module.dashboard_hosting.cloudfront_url}/api/recalls?state=LA&limit=10"
+    curl "${module.dashboard_hosting.cloudfront_url}/api/recalls/stats"
   EOT
 }
 
@@ -80,7 +80,7 @@ output "cloudfront_distribution_id" {
 
 output "dashboard_deploy_command" {
   description = "Build and deploy the React dashboard to S3 + invalidate CloudFront."
-  value       = "REACT_APP_API_URL=${module.api_gateway.invoke_url} npm run build --prefix ../dashboard && aws s3 sync ../dashboard/build/ s3://${module.dashboard_hosting.bucket_name}/ --delete && aws cloudfront create-invalidation --distribution-id ${module.dashboard_hosting.cloudfront_distribution_id} --paths '/*'"
+  value       = "REACT_APP_API_URL=/api npm run build --prefix ../dashboard && aws s3 sync ../dashboard/build/ s3://${module.dashboard_hosting.bucket_name}/ --delete && aws cloudfront create-invalidation --distribution-id ${module.dashboard_hosting.cloudfront_distribution_id} --paths '/*'"
 }
 
 output "cloudwatch_dashboard_name" {

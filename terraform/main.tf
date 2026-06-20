@@ -56,8 +56,11 @@ module "api_gateway" {
 module "dashboard_hosting" {
   source = "./modules/dashboard_hosting"
 
-  project_name = var.project_name
-  bucket_name  = var.dashboard_bucket_name
+  project_name              = var.project_name
+  bucket_name               = var.dashboard_bucket_name
+  api_gateway_domain_name   = module.api_gateway.domain_name
+  api_gateway_stage_name    = module.api_gateway.stage_name
+  api_gateway_api_key_value = module.api_gateway.cloudfront_api_key_value
 }
 
 # Phase 1H — CloudWatch dashboard and alarms

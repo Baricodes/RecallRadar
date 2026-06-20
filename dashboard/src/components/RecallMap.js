@@ -134,7 +134,7 @@ export function RecallMap({ stats, recalls = [], selectedState, onStateClick }) 
         </Geographies>
       </ComposableMap>
 
-      <div className="map-legend" aria-label="Recall activity color scale">
+      <div className="map-legend" aria-label="Recall volume by state color scale">
         <div
           className="legend-scale"
           style={{
@@ -145,7 +145,7 @@ export function RecallMap({ stats, recalls = [], selectedState, onStateClick }) 
           <span>0</span>
           <span>{maxCount.toLocaleString()}</span>
         </div>
-        <div className="legend-caption">Fewer to more recent recalls</div>
+        <div className="legend-caption">Recall volume by state</div>
       </div>
 
       {tooltip && (
@@ -164,6 +164,7 @@ export function RecallMap({ stats, recalls = [], selectedState, onStateClick }) 
               </span>
             ))}
           </div>
+          <span className="tooltip-hint">Click to show recalls in this state.</span>
         </div>
       )}
     </div>

@@ -187,6 +187,12 @@ select:focus-visible {
   font-weight: 600;
 }
 
+.tooltip-hint {
+  margin-top: 0.2rem;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -258,6 +264,17 @@ select:focus-visible {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.help-section.compact {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.help-section.compact .guide-card {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.85fr) minmax(280px, 1.4fr);
+  align-items: start;
+  gap: 1rem 1.5rem;
+}
+
 .guide-card {
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid rgba(148, 163, 184, 0.22);
@@ -296,7 +313,7 @@ select:focus-visible {
   display: grid;
   gap: 0.55rem;
   margin: 0;
-  padding-left: 1.1rem;
+  padding-left: 1rem;
   color: #475569;
   font-size: 0.86rem;
   line-height: 1.5;
@@ -491,9 +508,28 @@ select:focus-visible {
 
 .stats-loading,
 .feed-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
   padding: 2rem;
   text-align: center;
   color: #64748b;
+}
+
+.loading-spinner {
+  width: 1.35rem;
+  height: 1.35rem;
+  border: 3px solid #cbd5e1;
+  border-top-color: #0f766e;
+  border-radius: 999px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .feed-header {
@@ -550,29 +586,6 @@ select:focus-visible {
   grid-column: 1 / -1;
 }
 
-.feed-severity-filters {
-  display: flex;
-  grid-column: 1 / -1;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.severity-filter {
-  border: 1px solid var(--severity-color);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--severity-color);
-  cursor: pointer;
-  font-size: 0.76rem;
-  font-weight: 700;
-  padding: 0.42rem 0.7rem;
-}
-
-.severity-filter.active {
-  background: var(--severity-bg);
-  color: var(--severity-text);
-}
-
 .recall-list {
   scrollbar-width: thin;
 }
@@ -586,6 +599,7 @@ select:focus-visible {
   border-left-width: 4px;
   border-left-style: solid;
   box-shadow: 0 8px 22px rgba(71, 85, 105, 0.05);
+  user-select: text;
 }
 
 .recall-card:last-child {
@@ -598,11 +612,8 @@ select:focus-visible {
   align-items: center;
   gap: 0.75rem;
   width: 100%;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
   text-align: left;
+  user-select: text;
 }
 
 .recall-row-main,
@@ -646,23 +657,44 @@ select:focus-visible {
   font-size: 0.82rem;
   font-weight: 600;
   color: #64748b;
+  line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  user-select: text;
+  white-space: normal;
 }
 
 .recall-product-title {
+  display: -webkit-box;
   color: #0f172a;
   font-size: 1rem;
   font-weight: 800;
   line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  user-select: text;
+}
+
+.recall-details-toggle {
+  flex-shrink: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.32rem 0.62rem;
+}
+
+.recall-details-toggle:hover {
+  background: #e2e8f0;
 }
 
 .recall-product,
-.recall-reason {
+.recall-reason,
+.recall-action {
   margin: 0 0 0.35rem;
   font-size: 0.8rem;
   color: #475569;
@@ -682,6 +714,15 @@ select:focus-visible {
 .recall-reason {
   font-style: italic;
   color: #64748b;
+}
+
+.recall-action {
+  padding: 0.55rem 0.65rem;
+  background: #ecfdf5;
+  border: 1px solid #99f6e4;
+  border-radius: 10px;
+  color: #115e59;
+  font-style: normal;
 }
 
 .distribution-tag {
@@ -714,6 +755,10 @@ select:focus-visible {
   }
 
   .help-section {
+    grid-template-columns: 1fr;
+  }
+
+  .help-section.compact .guide-card {
     grid-template-columns: 1fr;
   }
 
@@ -790,6 +835,7 @@ select:focus-visible {
 .app.dark-mode .filter-btn,
 .app.dark-mode .view-toggle,
 .app.dark-mode .theme-toggle,
+.app.dark-mode .recall-details-toggle,
 .app.dark-mode .segmented-control,
 .app.dark-mode .segmented-control button,
 .app.dark-mode .feed-filter-panel input,
@@ -801,6 +847,7 @@ select:focus-visible {
 
 .app.dark-mode .filter-btn:hover,
 .app.dark-mode .view-toggle:hover,
+.app.dark-mode .recall-details-toggle:hover,
 .app.dark-mode .segmented-control button:hover {
   background: #1e293b;
 }
@@ -821,6 +868,7 @@ select:focus-visible {
 .app.dark-mode .guide-card h3,
 .app.dark-mode .legend-labels,
 .app.dark-mode .legend-caption,
+.app.dark-mode .tooltip-hint,
 .app.dark-mode .recall-date,
 .app.dark-mode .feed-updated,
 .app.dark-mode .classification-summary-header span {
@@ -859,6 +907,12 @@ select:focus-visible {
   color: #cbd5e1;
 }
 
+.app.dark-mode .recall-action {
+  background: #0f2f2d;
+  border-color: #115e59;
+  color: #ccfbf1;
+}
+
 .app.dark-mode .class-guide strong {
   color: #f8fafc;
 }
@@ -866,6 +920,11 @@ select:focus-visible {
 .app.dark-mode .classification-stack,
 .app.dark-mode .distribution-tag {
   background: #334155;
+}
+
+.app.dark-mode .loading-spinner {
+  border-color: #334155;
+  border-top-color: #2dd4bf;
 }
 
 .app.dark-mode .map-tooltip,

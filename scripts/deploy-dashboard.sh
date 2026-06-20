@@ -7,7 +7,7 @@ DASHBOARD_DIR="${ROOT_DIR}/dashboard"
 
 cd "${TERRAFORM_DIR}"
 
-API_URL="$(terraform output -raw api_gateway_invoke_url)"
+API_URL="/api"
 BUCKET="$(terraform output -raw dashboard_bucket_name)"
 DISTRIBUTION_ID="$(terraform output -raw cloudfront_distribution_id)"
 

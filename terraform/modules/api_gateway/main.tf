@@ -1,3 +1,5 @@
+data "aws_region" "current" {}
+
 resource "aws_api_gateway_rest_api" "api" {
   name        = var.api_name
   description = "RecallRadar REST API for recall queries"
@@ -45,10 +47,11 @@ locals {
 resource "aws_api_gateway_method" "get" {
   for_each = local.routes
 
-  rest_api_id   = aws_api_gateway_rest_api.api.id
-  resource_id   = each.value.resource_id
-  http_method   = "GET"
-  authorization = "NONE"
+  rest_api_id      = aws_api_gateway_rest_api.api.id
+  resource_id      = each.value.resource_id
+  http_method      = "GET"
+  authorization    = "NONE"
+  api_key_required = true
 }
 
 resource "aws_api_gateway_method" "options" {
@@ -111,6 +114,33 @@ resource "aws_api_gateway_stage" "api" {
   rest_api_id   = aws_api_gateway_rest_api.api.id
   deployment_id = aws_api_gateway_deployment.api.id
   stage_name    = var.stage_name
+}
+
+resource "aws_api_gateway_api_key" "cloudfront" {
+  name        = "${var.api_name}-cloudfront"
+  description = "Allows the CloudFront dashboard distribution to call the RecallRadar API."
+  enabled     = true
+}
+
+resource "aws_api_gateway_usage_plan" "cloudfront" {
+  name        = "${var.api_name}-cloudfront"
+  description = "Usage plan for RecallRadar dashboard traffic routed through CloudFront."
+
+  api_stages {
+    api_id = aws_api_gateway_rest_api.api.id
+    stage  = aws_api_gateway_stage.api.stage_name
+  }
+
+  throttle_settings {
+    burst_limit = var.throttle_burst_limit
+    rate_limit  = var.throttle_rate_limit
+  }
+}
+
+resource "aws_api_gateway_usage_plan_key" "cloudfront" {
+  key_id        = aws_api_gateway_api_key.cloudfront.id
+  key_type      = "API_KEY"
+  usage_plan_id = aws_api_gateway_usage_plan.cloudfront.id
 }
 
 resource "aws_lambda_permission" "api_gateway" {

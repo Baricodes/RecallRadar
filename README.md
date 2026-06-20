@@ -90,13 +90,14 @@ EventBridge Scheduler (every 6 hours)
 │  GET /recalls/stats     │
 │  GET /recalls/{id}      │
 │                         │
-│  CORS enabled           │
+│  API key required       │
 └─────────────────────────┘
         ▲
         │
 ┌─────────────────────────┐       ┌──────────────────────┐
 │  CloudFront CDN         │◀──────│  S3 Bucket           │
-│                         │       │  (React build files)  │
+│  /api/* → API Gateway   │       │  (React build files)  │
+│                         │       │                      │
 └─────────────────────────┘       └──────────────────────┘
 ```
 

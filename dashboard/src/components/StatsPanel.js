@@ -41,7 +41,12 @@ export function StatsPanel({ stats, recalls = [], loading }) {
   const metricLabel = FIRM_RANKING_MODES[firmRankingMode].metricLabel;
 
   if (loading || !stats) {
-    return <div className="stats-loading">Loading stats...</div>;
+    return (
+      <div className="stats-loading" role="status">
+        <span className="loading-spinner" aria-hidden="true" />
+        Loading recall snapshot...
+      </div>
+    );
   }
 
   const classData = Object.entries(stats.by_classification || {}).map(
@@ -80,7 +85,7 @@ export function StatsPanel({ stats, recalls = [], loading }) {
 
       <div className="classification-summary">
         <div className="classification-summary-header">
-          <h3>By Risk Level</h3>
+          <h3>Risk Mix Across Visible Recalls</h3>
           <span>{classTotal.toLocaleString()} recalls</span>
         </div>
         <div className="classification-stack" aria-label="Recall classification breakdown">
