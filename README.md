@@ -11,6 +11,8 @@ A personal serverless project that ingests FDA food recall data from openFDA, ma
 ![EventBridge](https://img.shields.io/badge/EventBridge-FF4F8B?style=flat&logo=amazon-aws&logoColor=white)
 ![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=flat&logo=terraform&logoColor=white)
 
+![RecallRadar dashboard demo](./images/Dashboard.gif)
+
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
