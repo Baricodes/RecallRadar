@@ -80,6 +80,13 @@ function App() {
     }));
   };
 
+  const handleStateChange = (stateCode) => {
+    setFilters((prev) => ({
+      ...prev,
+      state: stateCode,
+    }));
+  };
+
   return (
     <div className={`app ${darkMode ? "dark-mode" : ""}`}>
       <header className="app-header">
@@ -110,6 +117,8 @@ function App() {
             recalls={recalls}
             loading={loading}
             lastUpdatedAt={lastDataSyncAt}
+            selectedState={filters.state}
+            onStateChange={handleStateChange}
           />
 
           <section className="map-section" aria-label="Where recalls are happening">

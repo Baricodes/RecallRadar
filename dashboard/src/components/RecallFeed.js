@@ -12,10 +12,15 @@ const COMPACT_ROW_HEIGHT = 110;
 const EXPANDED_ROW_HEIGHT = 250;
 const MAX_LIST_HEIGHT = 520;
 
-export function RecallFeed({ recalls, loading, lastUpdatedAt }) {
+export function RecallFeed({
+  recalls,
+  loading,
+  lastUpdatedAt,
+  selectedState,
+  onStateChange,
+}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  const [stateFilter, setStateFilter] = useState("");
   const [expandedView, setExpandedView] = useState(false);
   const [expandedRows, setExpandedRows] = useState({});
   const [relativeUpdatedAt, setRelativeUpdatedAt] = useState(() =>
@@ -42,11 +47,12 @@ export function RecallFeed({ recalls, loading, lastUpdatedAt }) {
 
   const stateOptions = useMemo(() => {
     const states = new Set();
+    if (selectedState) states.add(selectedState);
     recalls.forEach((recall) => {
       (recall.affected_states || []).forEach((state) => states.add(state));
     });
     return Array.from(states).sort();
-  }, [recalls]);
+  }, [recalls, selectedState]);
 
   const filteredRecalls = useMemo(() => {
     const searchTerm = debouncedSearchQuery.trim().toLowerCase();
@@ -62,11 +68,11 @@ export function RecallFeed({ recalls, loading, lastUpdatedAt }) {
           .filter(Boolean)
           .some((value) => value.toLowerCase().includes(searchTerm));
       const stateMatches =
-        !stateFilter || (recall.affected_states || []).includes(stateFilter);
+        !selectedState || (recall.affected_states || []).includes(selectedState);
 
       return searchMatches && stateMatches;
     });
-  }, [debouncedSearchQuery, recalls, stateFilter]);
+  }, [debouncedSearchQuery, recalls, selectedState]);
 
   const rowHeight = useMemo(
     () => (index) => {
@@ -86,7 +92,7 @@ export function RecallFeed({ recalls, loading, lastUpdatedAt }) {
   const listHeight = Math.min(MAX_LIST_HEIGHT, totalListHeight);
   const listKey = [
     debouncedSearchQuery,
-    stateFilter,
+    selectedState,
     expandedView ? "expanded" : "compact",
   ].join("::");
 
@@ -137,8 +143,8 @@ export function RecallFeed({ recalls, loading, lastUpdatedAt }) {
           className="feed-search"
         />
         <select
-          value={stateFilter}
-          onChange={(event) => setStateFilter(event.target.value)}
+          value={selectedState || ""}
+          onChange={(event) => onStateChange(event.target.value || null)}
           aria-label="Filter by affected state"
         >
           <option value="">All states</option>
