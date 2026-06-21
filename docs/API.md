@@ -159,6 +159,18 @@ curl "${API_URL}/recalls/stats"
     "AL": 200,
     "AK": 180
   },
+  "state_class_counts": {
+    "AL": {
+      "Class I": 20,
+      "Class II": 140,
+      "Class III": 40
+    },
+    "AK": {
+      "Class I": 12,
+      "Class II": 128,
+      "Class III": 40
+    }
+  },
   "nationwide_count": 95,
   "nationwide_percentage": 7.6,
   "latest_ingested_at": "2026-06-20T16:30:00+00:00",
@@ -178,6 +190,7 @@ curl "${API_URL}/recalls/stats"
 | `top_firms_by_severity` | Top 10 recalling firms by weighted severity score (`Class I × 3`, `Class II × 2`, `Class III × 1`) |
 | `top_states` | Top 10 states by affected-recall count |
 | `state_counts` | Full map of state code → recall count |
+| `state_class_counts` | Full map of state code → count per FDA class |
 | `nationwide_count` | Recalls flagged as nationwide distribution |
 | `nationwide_percentage` | Percentage of total recalls that are nationwide |
 | `latest_ingested_at` | Most recent ingestion timestamp across recalled records |

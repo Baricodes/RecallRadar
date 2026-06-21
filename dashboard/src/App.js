@@ -113,14 +113,6 @@ function App() {
 
       <main className="dashboard">
         <section className="main-column" aria-label="Food recall search results">
-          <RecallFeed
-            recalls={recalls}
-            loading={loading}
-            lastUpdatedAt={lastDataSyncAt}
-            selectedState={filters.state}
-            onStateChange={handleStateChange}
-          />
-
           <section className="map-section" aria-label="Where recalls are happening">
             <div className="section-heading">
               <p className="eyebrow">By location</p>
@@ -132,11 +124,18 @@ function App() {
             </div>
             <RecallMap
               stats={stats}
-              recalls={recalls}
               selectedState={filters.state}
               onStateClick={handleStateClick}
             />
           </section>
+
+          <RecallFeed
+            recalls={recalls}
+            loading={loading}
+            lastUpdatedAt={lastDataSyncAt}
+            selectedState={filters.state}
+            onStateChange={handleStateChange}
+          />
 
           <section className="help-section compact" aria-label="Food recall help">
             <article className="guide-card">

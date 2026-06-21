@@ -167,9 +167,14 @@ def get_recall_stats() -> dict:
             latest_ingested_at = ingested_at
 
     state_counts = Counter()
+    state_classification_counts = {}
     for item in items:
+        classification = item.get("classification", "Unknown")
         for st in item.get("affected_states", []):
             state_counts[st] += 1
+            if st not in state_classification_counts:
+                state_classification_counts[st] = Counter()
+            state_classification_counts[st][classification] += 1
 
     nationwide_count = sum(1 for item in items if item.get("is_nationwide"))
     top_firms_by_severity = sorted(
@@ -197,6 +202,10 @@ def get_recall_stats() -> dict:
         "top_firms_by_severity": top_firms_by_severity,
         "top_states": dict(state_counts.most_common(10)),
         "state_counts": dict(state_counts),
+        "state_class_counts": {
+            state: dict(classifications)
+            for state, classifications in state_classification_counts.items()
+        },
         "nationwide_count": nationwide_count,
         "nationwide_percentage": round(
             (nationwide_count / len(items) * 100) if items else 0, 1

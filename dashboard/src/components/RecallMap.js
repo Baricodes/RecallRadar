@@ -24,6 +24,30 @@ const CLASS_LABELS = {
   "Class III": "Low Risk",
 };
 
+const CLASS_WEIGHTS = {
+  "Class I": 3,
+  "Class II": 2,
+  "Class III": 1,
+};
+
+const MAP_MODES = {
+  volume: {
+    label: "Volume",
+    metricLabel: "total recalls",
+    legendCaption: "Recall volume by state",
+  },
+  riskScore: {
+    label: "Risk Score",
+    metricLabel: "risk score",
+    legendCaption: "Weighted recall risk by state",
+  },
+  classI: {
+    label: "Class I Only",
+    metricLabel: "high-risk recalls",
+    legendCaption: "High-risk recall volume by state",
+  },
+};
+
 const FIPS_TO_STATE = {
   "01": "AL", "02": "AK", "04": "AZ", "05": "AR", "06": "CA",
   "08": "CO", "09": "CT", "10": "DE", "12": "FL", "13": "GA",
@@ -44,47 +68,78 @@ const EMPTY_BREAKDOWN = {
   "Class III": 0,
 };
 
-export function RecallMap({ stats, recalls = [], selectedState, onStateClick }) {
+export function RecallMap({ stats, selectedState, onStateClick }) {
   const [tooltip, setTooltip] = useState(null);
+  const [mapMode, setMapMode] = useState("volume");
   const stateCounts = useMemo(
     () => stats?.state_counts || stats?.top_states || {},
     [stats]
   );
-  const maxCount = Math.max(...Object.values(stateCounts), 0);
+  const stateClassCounts = useMemo(
+    () => stats?.state_class_counts || {},
+    [stats]
+  );
 
-  const stateClassCounts = useMemo(() => {
-    return recalls.reduce((acc, recall) => {
-      const states = recall.affected_states || [];
-      states.forEach((state) => {
-        if (!acc[state]) {
-          acc[state] = { ...EMPTY_BREAKDOWN };
+  const stateMetrics = useMemo(() => {
+    if (mapMode === "volume") {
+      return stateCounts;
+    }
+
+    return Object.fromEntries(
+      Object.entries(stateClassCounts).map(([stateCode, breakdown]) => {
+        if (mapMode === "classI") {
+          return [stateCode, breakdown["Class I"] || 0];
         }
-        acc[state][recall.classification] =
-          (acc[state][recall.classification] || 0) + 1;
-      });
-      return acc;
-    }, {});
-  }, [recalls]);
+
+        const riskScore = Object.entries(CLASS_WEIGHTS).reduce(
+          (score, [classification, weight]) =>
+            score + (breakdown[classification] || 0) * weight,
+          0
+        );
+        return [stateCode, riskScore];
+      })
+    );
+  }, [mapMode, stateClassCounts, stateCounts]);
+
+  const modeConfig = MAP_MODES[mapMode];
+  const maxMetric = Math.max(...Object.values(stateMetrics), 0);
 
   const colorScale = useMemo(() => {
-    if (!stateCounts || Object.keys(stateCounts).length === 0) {
+    if (!stateMetrics || Object.keys(stateMetrics).length === 0) {
       return () => "#EEE";
     }
-    const values = Object.values(stateCounts);
+    const values = Object.values(stateMetrics);
     const max = Math.max(...values, 1);
     return scaleQuantize()
       .domain([0, max])
       .range(MAP_COLOR_STOPS);
-  }, [stateCounts]);
+  }, [stateMetrics]);
 
   return (
     <div className="recall-map">
+      <div className="map-controls">
+        <span>Map view</span>
+        <div className="segmented-control" aria-label="Map metric">
+          {Object.entries(MAP_MODES).map(([mode, config]) => (
+            <button
+              key={mode}
+              type="button"
+              className={mapMode === mode ? "active" : ""}
+              onClick={() => setMapMode(mode)}
+              aria-pressed={mapMode === mode}
+            >
+              {config.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <ComposableMap projection="geoAlbersUsa">
         <Geographies geography={GEO_URL}>
           {({ geographies }) =>
             geographies.map((geo) => {
               const stateCode = FIPS_TO_STATE[geo.id];
-              const count = stateCounts[stateCode] || 0;
+              const metricValue = stateMetrics[stateCode] || 0;
               const isSelected = selectedState === stateCode;
               const breakdown = stateClassCounts[stateCode] || EMPTY_BREAKDOWN;
 
@@ -99,7 +154,7 @@ export function RecallMap({ stats, recalls = [], selectedState, onStateClick }) 
                       y: event.clientY,
                       stateCode,
                       stateName: geo.properties.name,
-                      count,
+                      metricValue,
                       breakdown,
                     })
                   }
@@ -113,7 +168,7 @@ export function RecallMap({ stats, recalls = [], selectedState, onStateClick }) 
                   onMouseLeave={() => setTooltip(null)}
                   style={{
                     default: {
-                      fill: isSelected ? "#2563eb" : colorScale(count),
+                      fill: isSelected ? "#2563eb" : colorScale(metricValue),
                       stroke: "#fff",
                       strokeWidth: 0.5,
                       outline: "none",
@@ -134,7 +189,10 @@ export function RecallMap({ stats, recalls = [], selectedState, onStateClick }) 
         </Geographies>
       </ComposableMap>
 
-      <div className="map-legend" aria-label="Recall volume by state color scale">
+      <div
+        className="map-legend"
+        aria-label={`${modeConfig.legendCaption} color scale`}
+      >
         <div
           className="legend-scale"
           style={{
@@ -143,9 +201,9 @@ export function RecallMap({ stats, recalls = [], selectedState, onStateClick }) 
         />
         <div className="legend-labels">
           <span>0</span>
-          <span>{maxCount.toLocaleString()}</span>
+          <span>{maxMetric.toLocaleString()}</span>
         </div>
-        <div className="legend-caption">Recall volume by state</div>
+        <div className="legend-caption">{modeConfig.legendCaption}</div>
       </div>
 
       {tooltip && (
@@ -156,7 +214,9 @@ export function RecallMap({ stats, recalls = [], selectedState, onStateClick }) 
           <strong>
             {tooltip.stateName} ({tooltip.stateCode})
           </strong>
-          <span>{tooltip.count.toLocaleString()} total recalls</span>
+          <span>
+            {tooltip.metricValue.toLocaleString()} {modeConfig.metricLabel}
+          </span>
           <div className="tooltip-breakdown">
             {Object.entries(CLASS_COLORS).map(([classification, color]) => (
               <span key={classification} style={{ color }}>

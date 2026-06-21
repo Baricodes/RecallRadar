@@ -125,6 +125,19 @@ select:focus-visible {
   position: relative;
 }
 
+.map-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  margin-bottom: 0.5rem;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .map-legend {
   max-width: 360px;
   margin: 0.25rem auto 0;
@@ -866,6 +879,7 @@ select:focus-visible {
 .app.dark-mode .filter-group label,
 .app.dark-mode .stats-panel h3,
 .app.dark-mode .guide-card h3,
+.app.dark-mode .map-controls,
 .app.dark-mode .legend-labels,
 .app.dark-mode .legend-caption,
 .app.dark-mode .tooltip-hint,
