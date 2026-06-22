@@ -5,12 +5,15 @@ import {
   Geography,
 } from "react-simple-maps";
 import { scaleQuantize } from "d3-scale";
-import { interpolateViridis } from "d3-scale-chromatic";
+import {
+  interpolateCividis,
+  interpolateReds,
+  interpolateViridis,
+} from "d3-scale-chromatic";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json";
-const MAP_COLOR_STOPS = Array.from({ length: 7 }, (_, index) =>
-  interpolateViridis(index / 6)
-);
+const getColorStops = (interpolator) =>
+  Array.from({ length: 7 }, (_, index) => interpolator(index / 6));
 
 const CLASS_COLORS = {
   "Class I": "#dc2626",
@@ -35,16 +38,25 @@ const MAP_MODES = {
     label: "Volume",
     metricLabel: "total recalls",
     legendCaption: "Recall volume by state",
+    colorStops: getColorStops(interpolateViridis),
+    selectedColor: "#2563eb",
+    hoverColor: "#3b82f6",
   },
   riskScore: {
     label: "Risk Score",
     metricLabel: "risk score",
     legendCaption: "Weighted recall risk by state",
+    colorStops: getColorStops(interpolateCividis),
+    selectedColor: "#6f5f00",
+    hoverColor: "#9c8500",
   },
   classI: {
     label: "Class I Only",
     metricLabel: "high-risk recalls",
     legendCaption: "High-risk recall volume by state",
+    colorStops: getColorStops(interpolateReds),
+    selectedColor: "#b91c1c",
+    hoverColor: "#ef4444",
   },
 };
 
@@ -102,6 +114,7 @@ export function RecallMap({ stats, selectedState, onStateClick }) {
   }, [mapMode, stateClassCounts, stateCounts]);
 
   const modeConfig = MAP_MODES[mapMode];
+  const mapColorStops = modeConfig.colorStops;
   const maxMetric = Math.max(...Object.values(stateMetrics), 0);
 
   const colorScale = useMemo(() => {
@@ -112,11 +125,14 @@ export function RecallMap({ stats, selectedState, onStateClick }) {
     const max = Math.max(...values, 1);
     return scaleQuantize()
       .domain([0, max])
-      .range(MAP_COLOR_STOPS);
-  }, [stateMetrics]);
+      .range(mapColorStops);
+  }, [mapColorStops, stateMetrics]);
 
   return (
-    <div className="recall-map">
+    <div
+      className="recall-map"
+      style={{ "--map-active-color": modeConfig.selectedColor }}
+    >
       <div className="map-controls">
         <span>Map view</span>
         <div className="segmented-control" aria-label="Map metric">
@@ -168,13 +184,15 @@ export function RecallMap({ stats, selectedState, onStateClick }) {
                   onMouseLeave={() => setTooltip(null)}
                   style={{
                     default: {
-                      fill: isSelected ? "#2563eb" : colorScale(metricValue),
+                      fill: isSelected
+                        ? modeConfig.selectedColor
+                        : colorScale(metricValue),
                       stroke: "#fff",
                       strokeWidth: 0.5,
                       outline: "none",
                     },
                     hover: {
-                      fill: "#3b82f6",
+                      fill: modeConfig.hoverColor,
                       stroke: "#fff",
                       strokeWidth: 1,
                       outline: "none",
@@ -196,7 +214,7 @@ export function RecallMap({ stats, selectedState, onStateClick }) {
         <div
           className="legend-scale"
           style={{
-            background: `linear-gradient(90deg, ${MAP_COLOR_STOPS.join(", ")})`,
+            background: `linear-gradient(90deg, ${mapColorStops.join(", ")})`,
           }}
         />
         <div className="legend-labels">

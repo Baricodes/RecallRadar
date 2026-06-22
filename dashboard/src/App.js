@@ -118,8 +118,8 @@ function App() {
               <p className="eyebrow">By location</p>
               <h2>Where recalls are happening</h2>
               <p>
-                Select a state to focus the recall list. Darker states have more
-                recent recall activity.
+                Select a state to focus the recall list. Switch the map view to
+                compare total volume, weighted risk, or Class I activity.
               </p>
             </div>
             <RecallMap

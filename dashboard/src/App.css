@@ -421,7 +421,7 @@ select:focus-visible {
 }
 
 .segmented-control button.active {
-  background: #2563eb;
+  background: var(--map-active-color, #2563eb);
   color: #fff;
 }
 
@@ -866,7 +866,7 @@ select:focus-visible {
 }
 
 .app.dark-mode .segmented-control button.active {
-  background: #2563eb;
+  background: var(--map-active-color, #2563eb);
   color: #fff;
 }
 
