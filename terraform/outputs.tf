@@ -9,23 +9,28 @@ output "dynamodb_table_arn" {
 }
 
 output "ingestion_lambda_function_name" {
-  description = "Name of the ingestion Lambda function."
-  value       = module.ingestion_lambda.function_name
+  description = "Names of the source-specific ingestion Lambda functions."
+  value       = { for source, lambda in module.ingestion_lambda : source => lambda.function_name }
 }
 
 output "ingestion_lambda_function_arn" {
-  description = "ARN of the ingestion Lambda function."
-  value       = module.ingestion_lambda.function_arn
+  description = "ARNs of the source-specific ingestion Lambda functions."
+  value       = { for source, lambda in module.ingestion_lambda : source => lambda.function_arn }
 }
 
 output "ingestion_lambda_role_arn" {
-  description = "ARN of the IAM role used by the ingestion Lambda."
-  value       = module.ingestion_lambda.role_arn
+  description = "ARNs of the IAM roles used by ingestion Lambdas."
+  value       = { for source, lambda in module.ingestion_lambda : source => lambda.role_arn }
 }
 
 output "ingestion_lambda_invoke_command" {
-  description = "AWS CLI command to manually invoke the ingestion Lambda."
-  value       = "aws lambda invoke --function-name ${module.ingestion_lambda.function_name} --payload '{}' /tmp/recallradar-ingestion-response.json && cat /tmp/recallradar-ingestion-response.json"
+  description = "AWS CLI command to manually invoke the Phase 3 ingestion state machine."
+  value       = "aws stepfunctions start-execution --state-machine-arn ${aws_sfn_state_machine.recall_ingestion.arn} --input '{\"limit\":100}'"
+}
+
+output "ingestion_state_machine_arn" {
+  description = "ARN of the Phase 3 multi-source ingestion state machine."
+  value       = aws_sfn_state_machine.recall_ingestion.arn
 }
 
 output "ingestion_schedule_name" {
@@ -57,6 +62,8 @@ output "api_test_commands" {
   description = "Example curl commands to test the API through CloudFront."
   value       = <<-EOT
     curl "${module.dashboard_hosting.cloudfront_url}/api/recalls?limit=5"
+    curl "${module.dashboard_hosting.cloudfront_url}/api/recalls?source=FDA_DRUG&limit=5"
+    curl "${module.dashboard_hosting.cloudfront_url}/api/recalls?category=VEHICLE&limit=5"
     curl "${module.dashboard_hosting.cloudfront_url}/api/recalls?classification=Class%20I&limit=5"
     curl "${module.dashboard_hosting.cloudfront_url}/api/recalls?state=LA&limit=10"
     curl "${module.dashboard_hosting.cloudfront_url}/api/recalls/stats"

@@ -22,7 +22,7 @@ data "archive_file" "lambda_zip" {
 }
 
 resource "aws_iam_role" "ingestion" {
-  name = "${var.project_name}-ingestion-role"
+  name = "${var.function_name}-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -39,7 +39,7 @@ resource "aws_iam_role" "ingestion" {
 }
 
 resource "aws_iam_role_policy" "ingestion" {
-  name = "${var.project_name}-ingestion-policy"
+  name = "${var.function_name}-policy"
   role = aws_iam_role.ingestion.id
 
   policy = jsonencode({
@@ -65,9 +65,9 @@ resource "aws_iam_role_policy" "ingestion" {
         Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:*"
       },
       {
-        Sid    = "CloudWatchMetrics"
-        Effect = "Allow"
-        Action = "cloudwatch:PutMetricData"
+        Sid      = "CloudWatchMetrics"
+        Effect   = "Allow"
+        Action   = "cloudwatch:PutMetricData"
         Resource = "*"
         Condition = {
           StringEquals = {
@@ -101,6 +101,7 @@ resource "aws_lambda_function" "ingestion" {
     variables = {
       TABLE_NAME    = var.table_name
       LOOKBACK_DAYS = tostring(var.lookback_days)
+      SOURCE_NAME   = var.source_name
     }
   }
 

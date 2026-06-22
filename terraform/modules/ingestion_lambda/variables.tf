@@ -23,6 +23,12 @@ variable "lookback_days" {
   type        = number
 }
 
+variable "source_name" {
+  description = "Recall source this Lambda ingests, such as FDA_FOOD or CPSC."
+  type        = string
+  default     = "FDA_FOOD"
+}
+
 variable "memory_mb" {
   description = "Lambda memory in MB."
   type        = number

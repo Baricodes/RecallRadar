@@ -217,13 +217,69 @@ select:focus-visible {
   top: 1rem;
 }
 
+.dashboard-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  max-width: 1400px;
+  margin: -1.4rem auto 0;
+  padding: 0 1.25rem;
+}
+
+.source-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 20px;
+  box-shadow: 0 14px 34px rgba(71, 85, 105, 0.1);
+}
+
+.source-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 0.55rem 0.85rem;
+  transition: all 0.15s ease;
+}
+
+.source-tab:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+  transform: translateY(-1px);
+}
+
+.source-tab.active {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+}
+
+.source-count {
+  padding: 0.1rem 0.42rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  font-size: 0.68rem;
+}
+
+.source-tab.active .source-count {
+  background: rgba(255, 255, 255, 0.22);
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 1.5rem;
-  max-width: 1400px;
-  margin: -1.4rem auto 0;
   padding: 1rem 1.25rem;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(148, 163, 184, 0.24);
@@ -239,6 +295,53 @@ select:focus-visible {
   letter-spacing: 0.05em;
   color: #64748b;
   margin-bottom: 0.5rem;
+}
+
+.risk-help {
+  max-width: 500px;
+  margin-top: 0.65rem;
+  color: #475569;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.risk-help summary {
+  display: inline-flex;
+  align-items: center;
+  color: #0f766e;
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+
+.risk-help summary::-webkit-details-marker {
+  display: none;
+}
+
+.risk-help summary::after {
+  content: "+";
+  margin-left: 0.35rem;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.risk-help[open] summary::after {
+  content: "-";
+}
+
+.risk-help p {
+  margin: 0.55rem 0 0.45rem;
+}
+
+.risk-help ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.risk-help strong {
+  color: #0f172a;
 }
 
 .filter-buttons {
@@ -269,71 +372,6 @@ select:focus-visible {
   background: var(--severity-color, #2563eb);
   border-color: var(--severity-color, #2563eb);
   color: #fff;
-}
-
-.help-section {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.help-section.compact {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.help-section.compact .guide-card {
-  display: grid;
-  grid-template-columns: minmax(220px, 0.85fr) minmax(280px, 1.4fr);
-  align-items: start;
-  gap: 1rem 1.5rem;
-}
-
-.guide-card {
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 20px;
-  box-shadow: 0 14px 36px rgba(71, 85, 105, 0.07);
-  padding: 1.35rem;
-}
-
-.guide-card h2 {
-  margin: 0 0 0.75rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.guide-card h3 {
-  margin: 1rem 0 0.5rem;
-  color: #64748b;
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.guide-card p {
-  margin: 0 0 0.75rem;
-  color: #475569;
-  font-size: 0.9rem;
-  line-height: 1.55;
-}
-
-.guide-card p:last-child {
-  margin-bottom: 0;
-}
-
-.class-guide ul {
-  display: grid;
-  gap: 0.55rem;
-  margin: 0;
-  padding-left: 1rem;
-  color: #475569;
-  font-size: 0.86rem;
-  line-height: 1.5;
-}
-
-.class-guide strong {
-  color: #0f172a;
 }
 
 .active-filter {
@@ -427,6 +465,25 @@ select:focus-visible {
 
 .classification-summary {
   margin-top: 1.25rem;
+}
+
+.source-breakdown {
+  margin-top: 1rem;
+}
+
+.breakdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 0.8rem;
+}
+
+.breakdown-row strong {
+  color: #0f172a;
 }
 
 .classification-summary-header {
@@ -653,6 +710,18 @@ select:focus-visible {
   border-radius: 999px;
 }
 
+.source-pill {
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 0.24rem 0.48rem;
+  text-transform: uppercase;
+}
+
 .recall-title-group {
   display: flex;
   min-width: 0;
@@ -767,14 +836,6 @@ select:focus-visible {
     position: static;
   }
 
-  .help-section {
-    grid-template-columns: 1fr;
-  }
-
-  .help-section.compact .guide-card {
-    grid-template-columns: 1fr;
-  }
-
   .stat-cards {
     grid-template-columns: 1fr;
   }
@@ -792,8 +853,12 @@ select:focus-visible {
   }
 
   .filter-bar {
-    margin: -1.6rem 1rem 0;
     padding: 1rem;
+  }
+
+  .dashboard-controls {
+    margin: -1.6rem 1rem 0;
+    padding: 0;
   }
 
   .dashboard {
@@ -833,8 +898,8 @@ select:focus-visible {
 
 .app.dark-mode .map-section,
 .app.dark-mode .filter-bar,
+.app.dark-mode .source-tabs,
 .app.dark-mode .stats-panel,
-.app.dark-mode .guide-card,
 .app.dark-mode .recall-feed {
   background: #111827;
   border-color: #1f2937;
@@ -846,6 +911,7 @@ select:focus-visible {
 }
 
 .app.dark-mode .filter-btn,
+.app.dark-mode .source-tab,
 .app.dark-mode .view-toggle,
 .app.dark-mode .theme-toggle,
 .app.dark-mode .recall-details-toggle,
@@ -859,6 +925,7 @@ select:focus-visible {
 }
 
 .app.dark-mode .filter-btn:hover,
+.app.dark-mode .source-tab:hover,
 .app.dark-mode .view-toggle:hover,
 .app.dark-mode .recall-details-toggle:hover,
 .app.dark-mode .segmented-control button:hover {
@@ -876,9 +943,14 @@ select:focus-visible {
   color: #fff;
 }
 
+.app.dark-mode .source-tab.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
 .app.dark-mode .filter-group label,
 .app.dark-mode .stats-panel h3,
-.app.dark-mode .guide-card h3,
 .app.dark-mode .map-controls,
 .app.dark-mode .legend-labels,
 .app.dark-mode .legend-caption,
@@ -911,14 +983,27 @@ select:focus-visible {
 }
 
 .app.dark-mode .stat-label,
+.app.dark-mode .breakdown-row,
 .app.dark-mode .recall-product,
 .app.dark-mode .recall-reason,
 .app.dark-mode .recall-firm,
-.app.dark-mode .guide-card p,
-.app.dark-mode .class-guide ul,
+.app.dark-mode .risk-help,
 .app.dark-mode .classification-legend,
 .app.dark-mode .state-count {
   color: #cbd5e1;
+}
+
+.app.dark-mode .breakdown-row {
+  border-bottom-color: #334155;
+}
+
+.app.dark-mode .breakdown-row strong {
+  color: #f8fafc;
+}
+
+.app.dark-mode .source-pill {
+  background: #172554;
+  color: #bfdbfe;
 }
 
 .app.dark-mode .recall-action {
@@ -927,7 +1012,8 @@ select:focus-visible {
   color: #ccfbf1;
 }
 
-.app.dark-mode .class-guide strong {
+.app.dark-mode .risk-help summary,
+.app.dark-mode .risk-help strong {
   color: #f8fafc;
 }
 

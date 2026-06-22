@@ -28,9 +28,9 @@ resource "aws_iam_role_policy" "scheduler" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "InvokeIngestionLambda"
-        Effect = "Allow"
-        Action = "lambda:InvokeFunction"
+        Sid      = "InvokeIngestionTarget"
+        Effect   = "Allow"
+        Action   = var.target_type == "state_machine" ? "states:StartExecution" : "lambda:InvokeFunction"
         Resource = var.lambda_arn
       },
       {
@@ -73,6 +73,8 @@ resource "aws_scheduler_schedule" "ingestion" {
 }
 
 resource "aws_lambda_permission" "scheduler" {
+  count = var.target_type == "lambda" ? 1 : 0
+
   statement_id  = "AllowEventBridgeScheduler"
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_function_name

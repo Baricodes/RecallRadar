@@ -64,6 +64,8 @@ def get_recalls(params: dict) -> dict:
         next_token      — Pagination token from previous response
     """
     classification = params.get("classification")
+    source = params.get("source")
+    category = params.get("category")
     status = params.get("status")
     state = params.get("state")
     from_date = params.get("from_date")
@@ -71,7 +73,35 @@ def get_recalls(params: dict) -> dict:
     limit = min(int(params.get("limit", "25")), 100)
     next_token = params.get("next_token")
 
-    if classification and not state:
+    if source:
+        query_kwargs = {
+            "IndexName": "SourceDateIndex",
+            "KeyConditionExpression": Key("GSI1PK").eq(source),
+            "ScanIndexForward": False,
+            "Limit": limit,
+        }
+        filter_parts = build_common_filters(classification, status, state, from_date, to_date)
+        if filter_parts:
+            query_kwargs["FilterExpression"] = combine_filters(filter_parts)
+        if next_token:
+            query_kwargs["ExclusiveStartKey"] = json.loads(next_token)
+        response = table.query(**query_kwargs)
+
+    elif category:
+        query_kwargs = {
+            "IndexName": "CategoryDateIndex",
+            "KeyConditionExpression": Key("GSI2PK").eq(category),
+            "ScanIndexForward": False,
+            "Limit": limit,
+        }
+        filter_parts = build_common_filters(classification, status, state, from_date, to_date)
+        if filter_parts:
+            query_kwargs["FilterExpression"] = combine_filters(filter_parts)
+        if next_token:
+            query_kwargs["ExclusiveStartKey"] = json.loads(next_token)
+        response = table.query(**query_kwargs)
+
+    elif classification and not state:
         query_kwargs = {
             "IndexName": "classification-date-index",
             "KeyConditionExpression": Key("classification").eq(classification),
@@ -94,24 +124,10 @@ def get_recalls(params: dict) -> dict:
 
     else:
         scan_kwargs = {"Limit": limit}
-        filter_parts = []
-
-        if classification:
-            filter_parts.append(Attr("classification").eq(classification))
-        if status:
-            filter_parts.append(Attr("status").eq(status))
-        if state:
-            filter_parts.append(Attr("affected_states").contains(state))
-        if from_date:
-            filter_parts.append(Attr("report_date").gte(from_date))
-        if to_date:
-            filter_parts.append(Attr("report_date").lte(to_date))
+        filter_parts = build_common_filters(classification, status, state, from_date, to_date)
 
         if filter_parts:
-            combined = filter_parts[0]
-            for part in filter_parts[1:]:
-                combined = combined & part
-            scan_kwargs["FilterExpression"] = combined
+            scan_kwargs["FilterExpression"] = combine_filters(filter_parts)
 
         if next_token:
             scan_kwargs["ExclusiveStartKey"] = json.loads(next_token)
@@ -130,6 +146,30 @@ def get_recalls(params: dict) -> dict:
     return result
 
 
+def build_common_filters(classification, status, state, from_date, to_date) -> list:
+    filter_parts = []
+
+    if classification:
+        filter_parts.append(Attr("classification").eq(classification))
+    if status:
+        filter_parts.append(Attr("status").eq(status))
+    if state:
+        filter_parts.append(Attr("affected_states").contains(state) | Attr("is_nationwide").eq(True))
+    if from_date:
+        filter_parts.append(Attr("report_date").gte(from_date))
+    if to_date:
+        filter_parts.append(Attr("report_date").lte(to_date))
+
+    return filter_parts
+
+
+def combine_filters(filter_parts: list):
+    combined = filter_parts[0]
+    for part in filter_parts[1:]:
+        combined = combined & part
+    return combined
+
+
 def get_recall_stats() -> dict:
     """
     Aggregated statistics across all recalls.
@@ -137,8 +177,14 @@ def get_recall_stats() -> dict:
     """
     items = []
     scan_kwargs = {
-        "ProjectionExpression": "classification, #s, recalling_firm, affected_states, is_nationwide, report_date, ingested_at",
-        "ExpressionAttributeNames": {"#s": "status"},
+        "ProjectionExpression": "#classification, #s, #source, #category, recalling_firm, company, affected_states, #states, is_nationwide, report_date, recall_date, ingested_at",
+        "ExpressionAttributeNames": {
+            "#classification": "classification",
+            "#s": "status",
+            "#source": "source",
+            "#category": "category",
+            "#states": "states",
+        },
     }
 
     while True:
@@ -150,12 +196,14 @@ def get_recall_stats() -> dict:
 
     classification_counts = Counter(item.get("classification", "Unknown") for item in items)
     status_counts = Counter(item.get("status", "Unknown") for item in items)
-    firm_counts = Counter(item.get("recalling_firm", "Unknown") for item in items)
+    source_counts = Counter(item.get("source", "Unknown") for item in items)
+    category_counts = Counter(item.get("category", "Unknown") for item in items)
+    firm_counts = Counter(get_company(item) for item in items)
     firm_classification_counts = {}
     latest_ingested_at = None
 
     for item in items:
-        firm_name = item.get("recalling_firm", "Unknown")
+        firm_name = get_company(item)
         classification = item.get("classification", "Unknown")
         ingested_at = item.get("ingested_at")
 
@@ -170,7 +218,7 @@ def get_recall_stats() -> dict:
     state_classification_counts = {}
     for item in items:
         classification = item.get("classification", "Unknown")
-        for st in item.get("affected_states", []):
+        for st in get_affected_states(item):
             state_counts[st] += 1
             if st not in state_classification_counts:
                 state_classification_counts[st] = Counter()
@@ -197,6 +245,9 @@ def get_recall_stats() -> dict:
     return {
         "total_recalls": len(items),
         "by_classification": dict(classification_counts),
+        "by_severity": dict(classification_counts),
+        "by_source": dict(source_counts),
+        "by_category": dict(category_counts),
         "by_status": dict(status_counts),
         "top_firms": dict(firm_counts.most_common(10)),
         "top_firms_by_severity": top_firms_by_severity,
@@ -213,6 +264,16 @@ def get_recall_stats() -> dict:
         "state_coordinates": STATE_COORDINATES,
         "latest_ingested_at": latest_ingested_at,
     }
+
+
+def get_company(item: dict) -> str:
+    return item.get("recalling_firm") or item.get("company") or "Unknown"
+
+
+def get_affected_states(item: dict) -> list:
+    if item.get("is_nationwide"):
+        return list(STATE_COORDINATES.keys())
+    return item.get("affected_states") or item.get("states") or []
 
 
 def get_recall_detail(recall_number: str) -> dict | None:

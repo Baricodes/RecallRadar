@@ -62,8 +62,12 @@ export function RecallFeed({
         !searchTerm ||
         [
           recall.recalling_firm,
+          recall.company,
+          recall.title,
           recall.product_description,
           recall.reason_for_recall,
+          recall.description,
+          recall.hazard_type,
         ]
           .filter(Boolean)
           .some((value) => value.toLowerCase().includes(searchTerm));
@@ -117,11 +121,11 @@ export function RecallFeed({
       <div className="feed-header">
         <div>
           <p className="eyebrow">Search recalls</p>
-          <h2>Recent Food Recalls</h2>
+          <h2>Recent Recalls</h2>
           <p className="feed-updated">
             {relativeUpdatedAt
-              ? `Latest FDA sync: ${relativeUpdatedAt}`
-              : "Latest FDA sync unavailable"}
+              ? `Latest data sync: ${relativeUpdatedAt}`
+              : "Latest data sync unavailable"}
           </p>
         </div>
         <button
@@ -186,9 +190,12 @@ function RecallRow({ index, style, recalls, expandedRows, expandedView, toggleRo
     SEVERITY_COLORS[recall.classification] || SEVERITY_COLORS["Class III"];
   const recallId = getRecallId(recall);
   const showDetails = expandedView || expandedRows[recallId];
+  const states = getStates(recall);
+  const company = getCompany(recall);
+  const description = getDescription(recall);
   const stateCount = recall.is_nationwide
     ? "Nationwide"
-    : `${(recall.affected_states || []).length} states`;
+    : `${states.length} states`;
 
   return (
     <div style={style}>
@@ -206,13 +213,14 @@ function RecallRow({ index, style, recalls, expandedRows, expandedView, toggleRo
             </span>
             <span className="recall-title-group">
               <span className="recall-product-title">
-                {recall.product_description || "Product not listed"}
+                {recall.product_description || recall.title || "Product not listed"}
               </span>
-              <span className="recall-firm">{recall.recalling_firm}</span>
+              <span className="recall-firm">{company}</span>
             </span>
           </span>
           <span className="recall-row-meta">
-            <span className="recall-date">{formatDate(recall.report_date)}</span>
+            {recall.source && <span className="source-pill">{formatSource(recall.source)}</span>}
+            <span className="recall-date">{formatDate(recall.report_date || recall.recall_date)}</span>
             <span className="state-count">{stateCount}</span>
             <button
               type="button"
@@ -228,22 +236,23 @@ function RecallRow({ index, style, recalls, expandedRows, expandedView, toggleRo
         {showDetails && (
           <div className="recall-details">
             <p className="recall-reason">
-              <strong>Reason:</strong> {truncate(recall.reason_for_recall, 180)}
+              <strong>Reason:</strong> {truncate(description, 180)}
             </p>
             <p className="recall-action">
               <strong>What should I do?</strong> {getActionGuidance(recall)}
             </p>
             <p className="recall-product">
-              <strong>FDA class:</strong> {recall.classification}
+              <strong>Classification:</strong> {recall.classification}
+              {recall.hazard_type ? ` (${recall.hazard_type})` : ""}
             </p>
             {recall.is_nationwide ? (
               <span className="distribution-tag nationwide">Nationwide</span>
             ) : (
               <span
                 className="distribution-tag"
-                title={(recall.affected_states || []).join(", ")}
+                title={states.join(", ")}
               >
-                {(recall.affected_states || []).join(", ")}
+                {states.join(", ")}
               </span>
             )}
           </div>
@@ -254,7 +263,12 @@ function RecallRow({ index, style, recalls, expandedRows, expandedView, toggleRo
 }
 
 function formatDate(dateStr) {
-  if (!dateStr || dateStr.length !== 8) return dateStr;
+  if (!dateStr) return "";
+  if (dateStr.includes("-")) {
+    const [year, month, day] = dateStr.split("-");
+    return `${month}/${day}/${year}`;
+  }
+  if (dateStr.length !== 8) return dateStr;
   return `${dateStr.slice(4, 6)}/${dateStr.slice(6, 8)}/${dateStr.slice(0, 4)}`;
 }
 
@@ -268,7 +282,7 @@ function formatRelativeTime(dateStr) {
 }
 
 function getRecallId(recall) {
-  return recall.PK || `${recall.recalling_firm}-${recall.report_date}`;
+  return recall.PK || recall.recall_id || `${getCompany(recall)}-${recall.report_date || recall.recall_date}`;
 }
 
 function getActionGuidance(recall) {
@@ -281,6 +295,22 @@ function getActionGuidance(recall) {
   }
 
   return `${scope} Compare the product details with items you have at home and follow FDA or company instructions.`;
+}
+
+function getCompany(recall) {
+  return recall.recalling_firm || recall.company || "Unknown company";
+}
+
+function getDescription(recall) {
+  return recall.reason_for_recall || recall.description || recall.title || "";
+}
+
+function getStates(recall) {
+  return recall.affected_states || recall.states || [];
+}
+
+function formatSource(source) {
+  return source.replace(/_/g, " ");
 }
 
 function truncate(str, max) {

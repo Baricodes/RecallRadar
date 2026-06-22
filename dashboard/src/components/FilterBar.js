@@ -37,6 +37,24 @@ export function FilterBar({ filters, onChange }) {
             </button>
           ))}
         </div>
+        <details className="risk-help">
+          <summary>What do these mean?</summary>
+          <p>
+            FDA recall classes describe how likely a recalled product is to cause
+            harm. RecallRadar translates them into plain risk levels.
+          </p>
+          <ul>
+            <li>
+              <strong>High Risk:</strong> serious health consequences are possible.
+            </li>
+            <li>
+              <strong>Medium Risk:</strong> temporary or reversible health effects are possible.
+            </li>
+            <li>
+              <strong>Low Risk:</strong> adverse health effects are unlikely.
+            </li>
+          </ul>
+        </details>
       </div>
 
       <div className="filter-group">
