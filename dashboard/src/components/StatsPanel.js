@@ -83,30 +83,6 @@ export function StatsPanel({ stats, recalls = [], loading }) {
         </div>
       </div>
 
-      <div className="source-breakdown">
-        <h3>By Agency</h3>
-        {Object.entries(stats.by_source || {})
-          .sort(([, a], [, b]) => b - a)
-          .map(([source, count]) => (
-            <div key={source} className="breakdown-row">
-              <span>{source.replace(/_/g, " ")}</span>
-              <strong>{count.toLocaleString()}</strong>
-            </div>
-          ))}
-      </div>
-
-      <div className="source-breakdown">
-        <h3>By Category</h3>
-        {Object.entries(stats.by_category || {})
-          .sort(([, a], [, b]) => b - a)
-          .map(([category, count]) => (
-            <div key={category} className="breakdown-row">
-              <span>{category.replace(/_/g, " ")}</span>
-              <strong>{count.toLocaleString()}</strong>
-            </div>
-          ))}
-      </div>
-
       <div className="classification-summary">
         <div className="classification-summary-header">
           <h3>Risk Mix Across Visible Recalls</h3>
@@ -259,7 +235,7 @@ function buildTooltipDetails(classifications = {}) {
 
 function buildFirmDetails(recalls) {
   const details = recalls.reduce((acc, recall) => {
-    const firmName = recall.recalling_firm || recall.company || "Unknown";
+    const firmName = recall.recalling_firm || "Unknown";
     if (!acc[firmName]) {
       acc[firmName] = {
         classifications: { "Class I": 0, "Class II": 0, "Class III": 0 },
@@ -271,7 +247,7 @@ function buildFirmDetails(recalls) {
     const firm = acc[firmName];
     firm.classifications[recall.classification] =
       (firm.classifications[recall.classification] || 0) + 1;
-    (recall.affected_states || recall.states || []).forEach((state) => firm.states.add(state));
+    (recall.affected_states || []).forEach((state) => firm.states.add(state));
     if (recall.product_description) {
       firm.products.add(truncate(recall.product_description, 48));
     }

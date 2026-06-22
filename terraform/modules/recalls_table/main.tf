@@ -35,26 +35,6 @@ resource "aws_dynamodb_table" "recalls" {
     type = "S"
   }
 
-  attribute {
-    name = "GSI1PK"
-    type = "S"
-  }
-
-  attribute {
-    name = "GSI1SK"
-    type = "S"
-  }
-
-  attribute {
-    name = "GSI2PK"
-    type = "S"
-  }
-
-  attribute {
-    name = "GSI2SK"
-    type = "S"
-  }
-
   global_secondary_index {
     name            = "classification-date-index"
     hash_key        = "classification"
@@ -74,25 +54,6 @@ resource "aws_dynamodb_table" "recalls" {
     hash_key        = "status"
     range_key       = "report_date"
     projection_type = "ALL"
-  }
-
-  global_secondary_index {
-    name            = "SourceDateIndex"
-    hash_key        = "GSI1PK"
-    range_key       = "GSI1SK"
-    projection_type = "ALL"
-  }
-
-  global_secondary_index {
-    name            = "CategoryDateIndex"
-    hash_key        = "GSI2PK"
-    range_key       = "GSI2SK"
-    projection_type = "ALL"
-  }
-
-  ttl {
-    attribute_name = "ttl"
-    enabled        = true
   }
 
   point_in_time_recovery {

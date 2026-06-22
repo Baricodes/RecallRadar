@@ -4,20 +4,13 @@ variable "project_name" {
 }
 
 variable "lambda_arn" {
-  description = "ARN of the ingestion target to invoke."
+  description = "ARN of the ingestion Lambda to invoke."
   type        = string
 }
 
 variable "lambda_function_name" {
-  description = "Name of the ingestion Lambda when target_type is lambda."
+  description = "Name of the ingestion Lambda (for invoke permission)."
   type        = string
-  default     = ""
-}
-
-variable "target_type" {
-  description = "Scheduler target type: lambda or state_machine."
-  type        = string
-  default     = "lambda"
 }
 
 variable "schedule_expression" {
