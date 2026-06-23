@@ -3,6 +3,7 @@ import { RecallMap } from "./components/RecallMap";
 import { RecallFeed } from "./components/RecallFeed";
 import { StatsPanel } from "./components/StatsPanel";
 import { FilterBar } from "./components/FilterBar";
+import { TrendIntelligencePanel } from "./components/TrendIntelligencePanel";
 import "./App.css";
 
 const API_BASE =
@@ -92,10 +93,11 @@ function App() {
       <header className="app-header">
         <div className="header-content">
           <div className="hero-copy">
-            <p className="eyebrow">FDA food recall tracker</p>
-            <h1>Find food recalls that may affect you.</h1>
+            <p className="eyebrow">Recall trend intelligence</p>
+            <h1>Find recalls and spot emerging safety patterns.</h1>
             <p className="subtitle">
-              Search recent FDA food recalls by product, company, state, or recall reason.
+              Search recent recalls by product, company, state, or recall reason, then use
+              Phase 4 analytics to identify repeat offenders and seasonal hazard spikes.
             </p>
           </div>
           <button
@@ -112,7 +114,9 @@ function App() {
       <FilterBar filters={filters} onChange={setFilters} />
 
       <main className="dashboard">
-        <section className="main-column" aria-label="Food recall search results">
+        <section className="main-column" aria-label="Recall search results and trend intelligence">
+          <TrendIntelligencePanel apiBase={API_BASE} />
+
           <section className="map-section" aria-label="Where recalls are happening">
             <div className="section-heading">
               <p className="eyebrow">By location</p>

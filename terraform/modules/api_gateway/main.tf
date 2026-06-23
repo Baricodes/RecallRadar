@@ -27,6 +27,48 @@ resource "aws_api_gateway_resource" "recalls_id" {
   path_part   = "{recall_number}"
 }
 
+resource "aws_api_gateway_resource" "analytics" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
+  path_part   = "analytics"
+}
+
+resource "aws_api_gateway_resource" "analytics_companies" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.analytics.id
+  path_part   = "companies"
+}
+
+resource "aws_api_gateway_resource" "analytics_trends" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.analytics.id
+  path_part   = "trends"
+}
+
+resource "aws_api_gateway_resource" "analytics_seasonal" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.analytics.id
+  path_part   = "seasonal"
+}
+
+resource "aws_api_gateway_resource" "analytics_seasonal_hazard" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.analytics_seasonal.id
+  path_part   = "{hazard}"
+}
+
+resource "aws_api_gateway_resource" "analytics_velocity" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.analytics.id
+  path_part   = "velocity"
+}
+
+resource "aws_api_gateway_resource" "analytics_briefings" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.analytics.id
+  path_part   = "briefings"
+}
+
 locals {
   routes = {
     recalls = {
@@ -40,6 +82,26 @@ locals {
     recalls_id = {
       resource_id = aws_api_gateway_resource.recalls_id.id
       path        = "/recalls/{recall_number}"
+    }
+    analytics_companies = {
+      resource_id = aws_api_gateway_resource.analytics_companies.id
+      path        = "/analytics/companies"
+    }
+    analytics_trends = {
+      resource_id = aws_api_gateway_resource.analytics_trends.id
+      path        = "/analytics/trends"
+    }
+    analytics_seasonal_hazard = {
+      resource_id = aws_api_gateway_resource.analytics_seasonal_hazard.id
+      path        = "/analytics/seasonal/{hazard}"
+    }
+    analytics_velocity = {
+      resource_id = aws_api_gateway_resource.analytics_velocity.id
+      path        = "/analytics/velocity"
+    }
+    analytics_briefings = {
+      resource_id = aws_api_gateway_resource.analytics_briefings.id
+      path        = "/analytics/briefings"
     }
   }
 }
@@ -93,6 +155,13 @@ resource "aws_api_gateway_deployment" "api" {
       aws_api_gateway_resource.recalls.id,
       aws_api_gateway_resource.recalls_stats.id,
       aws_api_gateway_resource.recalls_id.id,
+      aws_api_gateway_resource.analytics.id,
+      aws_api_gateway_resource.analytics_companies.id,
+      aws_api_gateway_resource.analytics_trends.id,
+      aws_api_gateway_resource.analytics_seasonal.id,
+      aws_api_gateway_resource.analytics_seasonal_hazard.id,
+      aws_api_gateway_resource.analytics_velocity.id,
+      aws_api_gateway_resource.analytics_briefings.id,
       aws_api_gateway_method.get,
       aws_api_gateway_method.options,
       aws_api_gateway_integration.get_lambda,

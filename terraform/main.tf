@@ -29,17 +29,38 @@ module "ingestion_scheduler" {
   schedule_expression  = var.ingestion_schedule_expression
 }
 
+# Phase 4 — Trend intelligence analytics table, stream aggregation, weekly pipeline
+module "analytics" {
+  source = "./modules/analytics"
+
+  project_name                     = var.project_name
+  analytics_table_name             = var.analytics_table_name
+  recalls_table_name               = module.recalls_table.table_name
+  recalls_table_arn                = module.recalls_table.table_arn
+  recalls_stream_arn               = module.recalls_table.stream_arn
+  source_path                      = var.lambda_source_path
+  stream_aggregator_function_name  = var.stream_aggregator_lambda_name
+  trend_compute_function_name      = var.trend_compute_lambda_name
+  briefing_generator_function_name = var.briefing_generator_lambda_name
+  briefing_bucket_name             = var.briefing_bucket_name
+  briefing_sender_email            = var.briefing_sender_email
+  briefing_recipient_email         = var.briefing_recipient_email
+  weekly_schedule_expression       = var.analytics_weekly_schedule_expression
+}
+
 # Phase 1E — Query Lambda (DynamoDB read API)
 module "query_lambda" {
   source = "./modules/query_lambda"
 
-  project_name    = var.project_name
-  function_name   = var.query_lambda_name
-  table_name      = module.recalls_table.table_name
-  table_arn       = module.recalls_table.table_arn
-  memory_mb       = var.query_lambda_memory_mb
-  timeout_seconds = var.query_lambda_timeout_seconds
-  source_path     = var.lambda_source_path
+  project_name         = var.project_name
+  function_name        = var.query_lambda_name
+  table_name           = module.recalls_table.table_name
+  table_arn            = module.recalls_table.table_arn
+  analytics_table_name = module.analytics.analytics_table_name
+  analytics_table_arn  = module.analytics.analytics_table_arn
+  memory_mb            = var.query_lambda_memory_mb
+  timeout_seconds      = var.query_lambda_timeout_seconds
+  source_path          = var.lambda_source_path
 }
 
 # Phase 1E — API Gateway REST API
@@ -67,12 +88,12 @@ module "dashboard_hosting" {
 module "monitoring" {
   source = "./modules/monitoring"
 
-  project_name           = var.project_name
-  aws_region             = var.aws_region
-  ingestion_lambda_name  = module.ingestion_lambda.function_name
-  dynamodb_table_name    = module.recalls_table.table_name
-  api_name               = var.api_name
-  api_stage_name         = var.api_stage_name
-  dlq_name               = "${var.project_name}-dlq"
-  alarm_email            = var.alarm_email
+  project_name          = var.project_name
+  aws_region            = var.aws_region
+  ingestion_lambda_name = module.ingestion_lambda.function_name
+  dynamodb_table_name   = module.recalls_table.table_name
+  api_name              = var.api_name
+  api_stage_name        = var.api_stage_name
+  dlq_name              = "${var.project_name}-dlq"
+  alarm_email           = var.alarm_email
 }

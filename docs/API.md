@@ -13,6 +13,11 @@ All endpoints return JSON and include CORS headers for browser access from the C
 | `GET` | `/recalls` | Paginated list of recalls with optional filters |
 | `GET` | `/recalls/stats` | Aggregated statistics across all recalls |
 | `GET` | `/recalls/{recall_number}` | Single recall by FDA recall number |
+| `GET` | `/analytics/companies` | Company leaderboard ranked by Phase 4 risk score |
+| `GET` | `/analytics/trends` | Monthly recall trend snapshots |
+| `GET` | `/analytics/seasonal/{hazard}` | Seasonal baseline records for one hazard type |
+| `GET` | `/analytics/velocity` | Resolution velocity records by source and quarter |
+| `GET` | `/analytics/briefings` | Archived weekly briefing references |
 | `OPTIONS` | `*` | CORS preflight (returns 200) |
 
 ---
@@ -228,6 +233,73 @@ Returns a single recall object (same schema as items in `/recalls`).
 
 ---
 
+## Analytics endpoints
+
+Phase 4 analytics endpoints read from the `recallradar-analytics` table. They return empty arrays until the stream aggregator has processed inserts or the weekly analytics Step Functions pipeline has run.
+
+### GET /analytics/companies
+
+Returns company profiles sorted by descending `risk_score`.
+
+Query parameters:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `limit` | integer | No | Number of companies to return. Default `20`, maximum `100`. |
+
+Example:
+
+```bash
+curl "${API_URL}/analytics/companies?limit=10"
+```
+
+Response:
+
+```json
+{
+  "companies": [
+    {
+      "company_name": "Example Foods Inc.",
+      "total_recalls": 8,
+      "risk_score": 72,
+      "trend_direction": "increasing",
+      "most_common_hazard": "Listeria",
+      "recalls_by_source": { "FDA": 8 }
+    }
+  ]
+}
+```
+
+### GET /analytics/trends
+
+Returns monthly trend snapshots sorted oldest to newest.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `months` | integer | No | Number of months to return. Default `12`, maximum `60`. |
+
+### GET /analytics/seasonal/{hazard}
+
+Returns month-of-year seasonal baselines for one URL-encoded hazard type, for example `/analytics/seasonal/Undeclared%20Allergen`.
+
+### GET /analytics/velocity
+
+Returns resolution velocity records by source and quarter.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `limit` | integer | No | Number of records to return. Default `48`, maximum `100`. |
+
+### GET /analytics/briefings
+
+Returns archived weekly briefing records sorted newest first.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `limit` | integer | No | Number of briefings to return. Default `12`, maximum `52`. |
+
+---
+
 ## Error responses
 
 | Status | Body | When |
@@ -256,4 +328,4 @@ The React dashboard calls `/api` on the CloudFront distribution. CloudFront forw
 
 - **Classification-only queries** use the `classification-date-index` GSI for efficient reads sorted by `report_date` descending.
 - **State filter** requires a table scan because `affected_states` is a list attribute without a dedicated GSI.
-- **Stats endpoint** performs a full table scan with projection — acceptable at Phase 1 scale (< ~30K items). See [Future Improvements](../README.md#future-improvements) for the planned precomputed aggregation path.
+- **Stats endpoint** performs a full table scan with projection for the original map/sidebar snapshot. Phase 4 trend visualizations use precomputed records in the analytics table.
