@@ -139,3 +139,13 @@ def to_jsonable(value):
     if isinstance(value, dict):
         return {key: to_jsonable(item) for key, item in value.items()}
     return value
+
+
+def to_dynamodb_item(value):
+    if isinstance(value, float):
+        return Decimal(str(value))
+    if isinstance(value, list):
+        return [to_dynamodb_item(item) for item in value]
+    if isinstance(value, dict):
+        return {key: to_dynamodb_item(item) for key, item in value.items()}
+    return value

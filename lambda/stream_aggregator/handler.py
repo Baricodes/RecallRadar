@@ -16,6 +16,7 @@ from shared.analytics_utils import (
     recall_date,
     risk_score,
     source_name,
+    to_dynamodb_item,
     trend_direction,
 )
 
@@ -90,24 +91,26 @@ def _update_company_profile(recall: dict, display_company: str) -> None:
     trend = trend_direction(dict(recalls_by_year))
 
     analytics_table.put_item(
-        Item={
-            "PK": key["PK"],
-            "SK": key["SK"],
-            "company_name": existing.get("company_name") or display_company,
-            "company_key": company_key,
-            "total_recalls": total_recalls,
-            "recalls_by_source": json.dumps(dict(recalls_by_source)),
-            "recalls_by_severity": json.dumps(dict(recalls_by_severity)),
-            "recalls_by_year": json.dumps(dict(recalls_by_year)),
-            "hazard_counts": json.dumps(dict(hazards)),
-            "most_common_hazard": hazards.most_common(1)[0][0],
-            "most_recent_recall_date": most_recent_recall_date,
-            "first_recall_date": min(first_recall_date, date) if date else first_recall_date,
-            "avg_recalls_per_year": round(total_recalls / max(len(recalls_by_year), 1), 2),
-            "trend_direction": trend,
-            "risk_score": risk_score(total_recalls, dict(recalls_by_severity), trend),
-            "updated_at": now,
-        }
+        Item=to_dynamodb_item(
+            {
+                "PK": key["PK"],
+                "SK": key["SK"],
+                "company_name": existing.get("company_name") or display_company,
+                "company_key": company_key,
+                "total_recalls": total_recalls,
+                "recalls_by_source": json.dumps(dict(recalls_by_source)),
+                "recalls_by_severity": json.dumps(dict(recalls_by_severity)),
+                "recalls_by_year": json.dumps(dict(recalls_by_year)),
+                "hazard_counts": json.dumps(dict(hazards)),
+                "most_common_hazard": hazards.most_common(1)[0][0],
+                "most_recent_recall_date": most_recent_recall_date,
+                "first_recall_date": min(first_recall_date, date) if date else first_recall_date,
+                "avg_recalls_per_year": round(total_recalls / max(len(recalls_by_year), 1), 2),
+                "trend_direction": trend,
+                "risk_score": risk_score(total_recalls, dict(recalls_by_severity), trend),
+                "updated_at": now,
+            }
+        )
     )
 
 

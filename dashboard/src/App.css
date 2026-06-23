@@ -21,6 +21,45 @@
   margin: 0 auto;
 }
 
+.site-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.section-nav {
+  display: inline-flex;
+  padding: 0.28rem;
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 999px;
+  box-shadow: 0 12px 28px rgba(71, 85, 105, 0.1);
+}
+
+.section-nav button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 0.58rem 0.95rem;
+  transition: all 0.15s ease;
+}
+
+.section-nav button:hover {
+  color: #0f172a;
+}
+
+.section-nav button.active {
+  background: #0f766e;
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(15, 118, 110, 0.24);
+}
+
 .hero-copy {
   max-width: 720px;
 }
@@ -84,6 +123,79 @@ select:focus-visible {
   max-width: 1400px;
   margin: 0 auto;
   padding: 1.5rem;
+}
+
+.trend-section {
+  display: flex;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.trend-hero-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  align-items: end;
+  gap: 1.5rem;
+  margin-top: -1.4rem;
+  padding: 1.4rem;
+  overflow: hidden;
+  position: relative;
+  background:
+    radial-gradient(circle at top right, rgba(20, 184, 166, 0.24), transparent 18rem),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(236, 253, 245, 0.92));
+  border: 1px solid rgba(20, 184, 166, 0.22);
+  border-radius: 28px;
+  box-shadow: 0 20px 50px rgba(71, 85, 105, 0.12);
+}
+
+.trend-hero-card h2 {
+  max-width: 700px;
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(1.65rem, 3vw, 2.6rem);
+  letter-spacing: -0.04em;
+  line-height: 1.02;
+}
+
+.trend-hero-card p:last-child {
+  max-width: 720px;
+  margin: 0.75rem 0 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.trend-metric-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.trend-metric-strip span {
+  display: flex;
+  min-height: 96px;
+  align-items: flex-start;
+  justify-content: flex-end;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.9rem;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 18px;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.trend-metric-strip strong {
+  color: #0f766e;
+  font-size: 1.85rem;
+  letter-spacing: -0.04em;
+  line-height: 1;
 }
 
 .main-column {
@@ -763,6 +875,21 @@ select:focus-visible {
   min-height: auto;
 }
 
+.trend-section .trend-panel {
+  padding: 1.4rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.94));
+  border-radius: 28px;
+}
+
+.trend-section .section-heading {
+  max-width: 760px;
+}
+
+.trend-section .section-heading h2 {
+  font-size: clamp(1.5rem, 2vw, 2rem);
+}
+
 .analytics-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -776,6 +903,24 @@ select:focus-visible {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 18px;
+}
+
+.trend-section .analytics-grid {
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 1.1rem;
+}
+
+.trend-section .analytics-card {
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(71, 85, 105, 0.07);
+}
+
+.trend-section .analytics-card.wide:first-child {
+  min-height: 380px;
+}
+
+.trend-section .analytics-card.wide:first-child .recharts-responsive-container {
+  min-height: 300px;
 }
 
 .analytics-card.wide {
@@ -940,6 +1085,10 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .trend-hero-card {
+    grid-template-columns: 1fr;
+  }
+
   .sidebar .stats-panel {
     position: static;
   }
@@ -959,13 +1108,27 @@ select:focus-visible {
   .analytics-grid {
     grid-template-columns: 1fr;
   }
+
+  .trend-section .analytics-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
   .header-content,
-  .recall-row {
+  .recall-row,
+  .site-actions {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .section-nav {
+    width: 100%;
+  }
+
+  .section-nav button {
+    flex: 1;
+    padding: 0.58rem 0.7rem;
   }
 
   .app-header {
@@ -979,6 +1142,19 @@ select:focus-visible {
 
   .dashboard {
     padding: 1rem;
+  }
+
+  .trend-section {
+    padding: 1rem;
+  }
+
+  .trend-hero-card {
+    margin-top: -1.6rem;
+    padding: 1rem;
+  }
+
+  .trend-metric-strip {
+    grid-template-columns: 1fr;
   }
 
   .feed-filter-panel {
@@ -1011,6 +1187,24 @@ select:focus-visible {
   color: #f8fafc;
 }
 
+.app.dark-mode .section-nav {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: #334155;
+}
+
+.app.dark-mode .section-nav button {
+  color: #cbd5e1;
+}
+
+.app.dark-mode .section-nav button:hover {
+  color: #f8fafc;
+}
+
+.app.dark-mode .section-nav button.active {
+  background: #14b8a6;
+  color: #042f2e;
+}
+
 .app.dark-mode .app-header .subtitle,
 .app.dark-mode .section-heading p:last-child {
   color: #cbd5e1;
@@ -1018,6 +1212,7 @@ select:focus-visible {
 
 .app.dark-mode .map-section,
 .app.dark-mode .trend-panel,
+.app.dark-mode .trend-hero-card,
 .app.dark-mode .filter-bar,
 .app.dark-mode .stats-panel,
 .app.dark-mode .guide-card,
@@ -1025,6 +1220,12 @@ select:focus-visible {
   background: #111827;
   border-color: #1f2937;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.app.dark-mode .trend-hero-card {
+  background:
+    radial-gradient(circle at top right, rgba(20, 184, 166, 0.18), transparent 18rem),
+    linear-gradient(135deg, #111827, #0f172a);
 }
 
 .app.dark-mode .filter-bar {
@@ -1085,6 +1286,7 @@ select:focus-visible {
 .app.dark-mode .recall-card,
 .app.dark-mode .feed-filter-panel,
 .app.dark-mode .analytics-card,
+.app.dark-mode .trend-metric-strip span,
 .app.dark-mode .leaderboard-row,
 .app.dark-mode .briefing-item {
   background: #1e293b;
@@ -1092,6 +1294,7 @@ select:focus-visible {
 }
 
 .app.dark-mode .stat-number,
+.app.dark-mode .trend-hero-card h2,
 .app.dark-mode .recall-product-title,
 .app.dark-mode .section-heading h2,
 .app.dark-mode .analytics-card-header h3,
@@ -1104,6 +1307,7 @@ select:focus-visible {
 }
 
 .app.dark-mode .stat-label,
+.app.dark-mode .trend-hero-card p:last-child,
 .app.dark-mode .recall-product,
 .app.dark-mode .recall-reason,
 .app.dark-mode .recall-firm,
@@ -1117,6 +1321,10 @@ select:focus-visible {
 .app.dark-mode .briefing-item p,
 .app.dark-mode .state-count {
   color: #cbd5e1;
+}
+
+.app.dark-mode .trend-metric-strip strong {
+  color: #5eead4;
 }
 
 .app.dark-mode .recall-action {

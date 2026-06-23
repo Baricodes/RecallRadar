@@ -14,6 +14,7 @@ function App() {
   const [recalls, setRecalls] = useState([]);
   const [stats, setStats] = useState(null);
   const [lastDataSyncAt, setLastDataSyncAt] = useState(null);
+  const [activeSection, setActiveSection] = useState("dashboard");
   const [filters, setFilters] = useState({
     classification: null,
     state: null,
@@ -88,87 +89,145 @@ function App() {
     }));
   };
 
+  const isTrendSection = activeSection === "trends";
+
   return (
     <div className={`app ${darkMode ? "dark-mode" : ""}`}>
       <header className="app-header">
         <div className="header-content">
           <div className="hero-copy">
-            <p className="eyebrow">Recall trend intelligence</p>
-            <h1>Find recalls and spot emerging safety patterns.</h1>
+            <p className="eyebrow">
+              {isTrendSection ? "Trend intelligence" : "Recall search dashboard"}
+            </p>
+            <h1>
+              {isTrendSection
+                ? "Spot emerging safety patterns before they spread."
+                : "Find recalls and understand where risk is moving."}
+            </h1>
             <p className="subtitle">
-              Search recent recalls by product, company, state, or recall reason, then use
-              Phase 4 analytics to identify repeat offenders and seasonal hazard spikes.
+              {isTrendSection
+                ? "Explore company risk, monthly recall movement, seasonal hazard baselines, resolution velocity, and weekly AI briefings in one focused workspace."
+                : "Search recent recalls by product, company, state, or recall reason, then filter the map and feed to focus on the risks that matter."}
             </p>
           </div>
-          <button
-            type="button"
-            className="theme-toggle"
-            onClick={() => setDarkMode((current) => !current)}
-            aria-pressed={darkMode}
-          >
-            {darkMode ? "Light Mode" : "Dark Mode"}
-          </button>
+          <div className="site-actions">
+            <nav className="section-nav" aria-label="Site sections">
+              <button
+                type="button"
+                className={activeSection === "dashboard" ? "active" : ""}
+                onClick={() => setActiveSection("dashboard")}
+              >
+                Dashboard
+              </button>
+              <button
+                type="button"
+                className={isTrendSection ? "active" : ""}
+                onClick={() => setActiveSection("trends")}
+              >
+                Trend Intelligence
+              </button>
+            </nav>
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={() => setDarkMode((current) => !current)}
+              aria-pressed={darkMode}
+            >
+              {darkMode ? "Light Mode" : "Dark Mode"}
+            </button>
+          </div>
         </div>
       </header>
 
-      <FilterBar filters={filters} onChange={setFilters} />
-
-      <main className="dashboard">
-        <section className="main-column" aria-label="Recall search results and trend intelligence">
-          <TrendIntelligencePanel apiBase={API_BASE} />
-
-          <section className="map-section" aria-label="Where recalls are happening">
-            <div className="section-heading">
-              <p className="eyebrow">By location</p>
-              <h2>Where recalls are happening</h2>
+      {isTrendSection ? (
+        <main className="trend-section" aria-label="Trend intelligence">
+          <section className="trend-hero-card">
+            <div>
+              <p className="eyebrow">Analytics workspace</p>
+              <h2>Turn recall records into pattern recognition.</h2>
               <p>
-                Select a state to focus the recall list. Switch the map view to
-                compare total volume, weighted risk, or Class I activity.
+                The trend section separates strategic intelligence from day-to-day recall
+                search, giving the charts room to breathe and making the weekly briefing
+                archive easier to scan.
               </p>
             </div>
-            <RecallMap
-              stats={stats}
-              selectedState={filters.state}
-              onStateClick={handleStateClick}
-            />
+            <div className="trend-metric-strip" aria-label="Trend intelligence coverage">
+              <span>
+                <strong>12</strong>
+                months tracked
+              </span>
+              <span>
+                <strong>5</strong>
+                hazard baselines
+              </span>
+              <span>
+                <strong>AI</strong>
+                weekly briefings
+              </span>
+            </div>
           </section>
+          <TrendIntelligencePanel apiBase={API_BASE} />
+        </main>
+      ) : (
+        <>
+          <FilterBar filters={filters} onChange={setFilters} />
 
-          <RecallFeed
-            recalls={recalls}
-            loading={loading}
-            lastUpdatedAt={lastDataSyncAt}
-            selectedState={filters.state}
-            onStateChange={handleStateChange}
-          />
+          <main className="dashboard">
+            <section className="main-column" aria-label="Recall search results">
+              <section className="map-section" aria-label="Where recalls are happening">
+                <div className="section-heading">
+                  <p className="eyebrow">By location</p>
+                  <h2>Where recalls are happening</h2>
+                  <p>
+                    Select a state to focus the recall list. Switch the map view to
+                    compare total volume, weighted risk, or Class I activity.
+                  </p>
+                </div>
+                <RecallMap
+                  stats={stats}
+                  selectedState={filters.state}
+                  onStateClick={handleStateClick}
+                />
+              </section>
 
-          <section className="help-section compact" aria-label="Food recall help">
-            <article className="guide-card">
-              <h2>What Do Risk Levels Mean?</h2>
-              <p>
-                FDA recall classes describe how likely a recalled product is to cause
-                harm. RecallRadar translates them into plain risk levels.
-              </p>
-              <div className="class-guide">
-                <ul>
-                  <li>
-                    <strong>High Risk:</strong> serious health consequences are possible.
-                  </li>
-                  <li>
-                    <strong>Medium Risk:</strong> temporary or reversible health effects are possible.
-                  </li>
-                  <li>
-                    <strong>Low Risk:</strong> adverse health effects are unlikely.
-                  </li>
-                </ul>
-              </div>
-            </article>
-          </section>
-        </section>
+              <RecallFeed
+                recalls={recalls}
+                loading={loading}
+                lastUpdatedAt={lastDataSyncAt}
+                selectedState={filters.state}
+                onStateChange={handleStateChange}
+              />
 
-        <aside className="sidebar">
-          <StatsPanel stats={stats} recalls={recalls} loading={!stats} />
-        </aside>
-      </main>
+              <section className="help-section compact" aria-label="Food recall help">
+                <article className="guide-card">
+                  <h2>What Do Risk Levels Mean?</h2>
+                  <p>
+                    FDA recall classes describe how likely a recalled product is to cause
+                    harm. RecallRadar translates them into plain risk levels.
+                  </p>
+                  <div className="class-guide">
+                    <ul>
+                      <li>
+                        <strong>High Risk:</strong> serious health consequences are possible.
+                      </li>
+                      <li>
+                        <strong>Medium Risk:</strong> temporary or reversible health effects are possible.
+                      </li>
+                      <li>
+                        <strong>Low Risk:</strong> adverse health effects are unlikely.
+                      </li>
+                    </ul>
+                  </div>
+                </article>
+              </section>
+            </section>
+
+            <aside className="sidebar">
+              <StatsPanel stats={stats} recalls={recalls} loading={!stats} />
+            </aside>
+          </main>
+        </>
+      )}
     </div>
   );
 }

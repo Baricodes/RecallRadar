@@ -18,6 +18,7 @@ from shared.analytics_utils import (
     recall_month,
     risk_score,
     source_name,
+    to_dynamodb_item,
     to_jsonable,
     trend_direction,
 )
@@ -287,7 +288,7 @@ def _detect_anomalies(monthly_items: list, seasonal_items: list) -> list:
 def _batch_write_analytics(items: list) -> None:
     with analytics_table.batch_writer() as batch:
         for item in items:
-            batch.put_item(Item=item)
+            batch.put_item(Item=to_dynamodb_item(item))
 
 
 def _top_entries(counter: Counter, key_name: str, limit: int = 5) -> list:
