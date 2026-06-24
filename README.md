@@ -210,9 +210,8 @@ Planned extensions that layer on top of Phase 1 without refactoring the core pip
 
 - **Phase 2 — AI enrichment** — Bedrock analyzes `reason_for_recall` for plain-English risk summaries and severity scores
 - **Phase 3 — Multi-source** — CPSC, NHTSA, and USDA adapters using the same ingestion pattern
-- **Phase 4 — Trend intelligence** — Timestream for time-series analytics and precomputed stats (replaces full-table scan)
-- **Phase 5 — User subscriptions** — Cognito auth + SNS/SES alerts when recalls match user location and allergen profile
-- **Phase 6 — Predictive analytics** — Correlate recall patterns with FDA inspection data
+- **User subscriptions** — Cognito auth + SNS/SES alerts when recalls match user location and allergen profile
+- **Predictive analytics** — Correlate recall patterns with FDA inspection data
 - **Real-time feed** — WebSocket API for live dashboard updates without polling
 
 ## 📡 Data Source

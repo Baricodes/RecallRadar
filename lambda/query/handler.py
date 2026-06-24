@@ -133,7 +133,7 @@ def get_recalls(params: dict) -> dict:
 def get_recall_stats() -> dict:
     """
     Aggregated statistics across all recalls.
-    Note: Scans entire table — in Phase 4, precompute these with Timestream.
+    Note: Scans entire table, which is acceptable for the current data volume.
     """
     items = []
     scan_kwargs = {

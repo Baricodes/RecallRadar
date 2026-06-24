@@ -92,27 +92,30 @@ function App() {
       <header className="app-header">
         <div className="header-content">
           <div className="hero-copy">
-            <p className="eyebrow">FDA food recall tracker</p>
-            <h1>Find food recalls that may affect you.</h1>
+            <p className="eyebrow">Recall search dashboard</p>
+            <h1>Find recalls and understand where risk is moving.</h1>
             <p className="subtitle">
-              Search recent FDA food recalls by product, company, state, or recall reason.
+              Search recent recalls by product, company, state, or recall reason,
+              then filter the map and feed to focus on the risks that matter.
             </p>
           </div>
-          <button
-            type="button"
-            className="theme-toggle"
-            onClick={() => setDarkMode((current) => !current)}
-            aria-pressed={darkMode}
-          >
-            {darkMode ? "Light Mode" : "Dark Mode"}
-          </button>
+          <div className="site-actions">
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={() => setDarkMode((current) => !current)}
+              aria-pressed={darkMode}
+            >
+              {darkMode ? "Light Mode" : "Dark Mode"}
+            </button>
+          </div>
         </div>
       </header>
 
       <FilterBar filters={filters} onChange={setFilters} />
 
       <main className="dashboard">
-        <section className="main-column" aria-label="Food recall search results">
+        <section className="main-column" aria-label="Recall search results">
           <section className="map-section" aria-label="Where recalls are happening">
             <div className="section-heading">
               <p className="eyebrow">By location</p>
@@ -136,29 +139,6 @@ function App() {
             selectedState={filters.state}
             onStateChange={handleStateChange}
           />
-
-          <section className="help-section compact" aria-label="Food recall help">
-            <article className="guide-card">
-              <h2>What Do Risk Levels Mean?</h2>
-              <p>
-                FDA recall classes describe how likely a recalled product is to cause
-                harm. RecallRadar translates them into plain risk levels.
-              </p>
-              <div className="class-guide">
-                <ul>
-                  <li>
-                    <strong>High Risk:</strong> serious health consequences are possible.
-                  </li>
-                  <li>
-                    <strong>Medium Risk:</strong> temporary or reversible health effects are possible.
-                  </li>
-                  <li>
-                    <strong>Low Risk:</strong> adverse health effects are unlikely.
-                  </li>
-                </ul>
-              </div>
-            </article>
-          </section>
         </section>
 
         <aside className="sidebar">

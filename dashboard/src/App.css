@@ -21,6 +21,14 @@
   margin: 0 auto;
 }
 
+.site-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
 .hero-copy {
   max-width: 720px;
 }
@@ -271,71 +279,6 @@ select:focus-visible {
   color: #fff;
 }
 
-.help-section {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.help-section.compact {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.help-section.compact .guide-card {
-  display: grid;
-  grid-template-columns: minmax(220px, 0.85fr) minmax(280px, 1.4fr);
-  align-items: start;
-  gap: 1rem 1.5rem;
-}
-
-.guide-card {
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 20px;
-  box-shadow: 0 14px 36px rgba(71, 85, 105, 0.07);
-  padding: 1.35rem;
-}
-
-.guide-card h2 {
-  margin: 0 0 0.75rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.guide-card h3 {
-  margin: 1rem 0 0.5rem;
-  color: #64748b;
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.guide-card p {
-  margin: 0 0 0.75rem;
-  color: #475569;
-  font-size: 0.9rem;
-  line-height: 1.55;
-}
-
-.guide-card p:last-child {
-  margin-bottom: 0;
-}
-
-.class-guide ul {
-  display: grid;
-  gap: 0.55rem;
-  margin: 0;
-  padding-left: 1rem;
-  color: #475569;
-  font-size: 0.86rem;
-  line-height: 1.5;
-}
-
-.class-guide strong {
-  color: #0f172a;
-}
-
 .active-filter {
   display: flex;
   align-items: center;
@@ -476,6 +419,13 @@ select:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 0.28rem;
+}
+
+.risk-level-note {
+  margin: 0.55rem 0 0;
+  color: #64748b;
+  font-size: 0.74rem;
+  line-height: 1.45;
 }
 
 .legend-dot {
@@ -767,14 +717,6 @@ select:focus-visible {
     position: static;
   }
 
-  .help-section {
-    grid-template-columns: 1fr;
-  }
-
-  .help-section.compact .guide-card {
-    grid-template-columns: 1fr;
-  }
-
   .stat-cards {
     grid-template-columns: 1fr;
   }
@@ -782,7 +724,8 @@ select:focus-visible {
 
 @media (max-width: 640px) {
   .header-content,
-  .recall-row {
+  .recall-row,
+  .site-actions {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -834,7 +777,6 @@ select:focus-visible {
 .app.dark-mode .map-section,
 .app.dark-mode .filter-bar,
 .app.dark-mode .stats-panel,
-.app.dark-mode .guide-card,
 .app.dark-mode .recall-feed {
   background: #111827;
   border-color: #1f2937;
@@ -878,14 +820,14 @@ select:focus-visible {
 
 .app.dark-mode .filter-group label,
 .app.dark-mode .stats-panel h3,
-.app.dark-mode .guide-card h3,
 .app.dark-mode .map-controls,
 .app.dark-mode .legend-labels,
 .app.dark-mode .legend-caption,
 .app.dark-mode .tooltip-hint,
 .app.dark-mode .recall-date,
 .app.dark-mode .feed-updated,
-.app.dark-mode .classification-summary-header span {
+.app.dark-mode .classification-summary-header span,
+.app.dark-mode .risk-level-note {
   color: #94a3b8;
 }
 
@@ -914,8 +856,6 @@ select:focus-visible {
 .app.dark-mode .recall-product,
 .app.dark-mode .recall-reason,
 .app.dark-mode .recall-firm,
-.app.dark-mode .guide-card p,
-.app.dark-mode .class-guide ul,
 .app.dark-mode .classification-legend,
 .app.dark-mode .state-count {
   color: #cbd5e1;
@@ -925,10 +865,6 @@ select:focus-visible {
   background: #0f2f2d;
   border-color: #115e59;
   color: #ccfbf1;
-}
-
-.app.dark-mode .class-guide strong {
-  color: #f8fafc;
 }
 
 .app.dark-mode .classification-stack,

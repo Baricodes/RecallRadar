@@ -117,6 +117,10 @@ export function StatsPanel({ stats, recalls = [], loading }) {
             </span>
           ))}
         </div>
+        <p className="risk-level-note">
+          Risk levels translate FDA classes: High = Class I, Medium = Class II,
+          Low = Class III.
+        </p>
       </div>
 
       <div className="top-firms-header">
