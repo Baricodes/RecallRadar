@@ -2,5 +2,3 @@
 # aws_region = "us-east-1"
 # environment = "dev"
 # alarm_email = "you@example.com"
-# briefing_sender_email = "verified-sender@example.com"
-# briefing_recipient_email = "you@example.com"

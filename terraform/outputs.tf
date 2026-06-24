@@ -8,16 +8,6 @@ output "dynamodb_table_arn" {
   value       = module.recalls_table.table_arn
 }
 
-output "analytics_table_name" {
-  description = "Name of the Phase 4 analytics DynamoDB table."
-  value       = module.analytics.analytics_table_name
-}
-
-output "analytics_table_arn" {
-  description = "ARN of the Phase 4 analytics DynamoDB table."
-  value       = module.analytics.analytics_table_arn
-}
-
 output "ingestion_lambda_function_name" {
   description = "Name of the ingestion Lambda function."
   value       = module.ingestion_lambda.function_name
@@ -70,8 +60,6 @@ output "api_test_commands" {
     curl "${module.dashboard_hosting.cloudfront_url}/api/recalls?classification=Class%20I&limit=5"
     curl "${module.dashboard_hosting.cloudfront_url}/api/recalls?state=LA&limit=10"
     curl "${module.dashboard_hosting.cloudfront_url}/api/recalls/stats"
-    curl "${module.dashboard_hosting.cloudfront_url}/api/analytics/companies?limit=10"
-    curl "${module.dashboard_hosting.cloudfront_url}/api/analytics/trends?months=12"
   EOT
 }
 
@@ -103,14 +91,4 @@ output "cloudwatch_dashboard_name" {
 output "alarm_sns_topic_arn" {
   description = "SNS topic ARN for CloudWatch alarms."
   value       = module.monitoring.sns_topic_arn
-}
-
-output "briefing_bucket_name" {
-  description = "S3 bucket containing archived Phase 4 weekly briefings."
-  value       = module.analytics.briefing_bucket_name
-}
-
-output "weekly_analytics_state_machine_arn" {
-  description = "ARN of the Phase 4 weekly analytics Step Functions state machine."
-  value       = module.analytics.state_machine_arn
 }

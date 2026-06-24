@@ -8,12 +8,10 @@ import os
 import logging
 from decimal import Decimal
 from collections import Counter
-from urllib.parse import unquote
 
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
 
-from shared.analytics_utils import to_jsonable
 from shared.state_coordinates import STATE_COORDINATES
 
 logger = logging.getLogger()
@@ -26,10 +24,8 @@ CLASSIFICATION_WEIGHTS = {
 }
 
 TABLE_NAME = os.environ.get("TABLE_NAME", "recallradar-recalls")
-ANALYTICS_TABLE_NAME = os.environ.get("ANALYTICS_TABLE", "recallradar-analytics")
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE_NAME)
-analytics_table = dynamodb.Table(ANALYTICS_TABLE_NAME)
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -231,91 +227,6 @@ def get_recall_detail(recall_number: str) -> dict | None:
     return items[0]
 
 
-def get_company_leaderboard(params: dict) -> dict:
-    limit = min(int(params.get("limit", "20")), 100)
-    profiles = _scan_analytics(
-        FilterExpression=Attr("PK").begins_with("COMPANY#") & Attr("SK").eq("PROFILE")
-    )
-
-    for profile in profiles:
-        _decode_json_fields(
-            profile,
-            ["recalls_by_source", "recalls_by_severity", "recalls_by_year", "hazard_counts"],
-        )
-
-    profiles.sort(key=lambda item: int(item.get("risk_score", 0)), reverse=True)
-    return {"companies": profiles[:limit]}
-
-
-def get_monthly_trends(params: dict) -> dict:
-    months = min(int(params.get("months", "12")), 60)
-    response = analytics_table.query(
-        KeyConditionExpression=Key("PK").eq("TREND#MONTHLY"),
-        ScanIndexForward=False,
-        Limit=months,
-    )
-    items = [to_jsonable(item) for item in response.get("Items", [])]
-    for item in items:
-        _decode_json_fields(
-            item,
-            ["by_source", "by_category", "by_severity", "top_companies", "top_hazards"],
-        )
-    return {"monthly": sorted(items, key=lambda item: item["SK"])}
-
-
-def get_seasonal_data(hazard: str) -> dict:
-    decoded_hazard = unquote(hazard)
-    response = analytics_table.query(
-        KeyConditionExpression=Key("PK").eq(f"SEASONAL#{decoded_hazard}")
-    )
-    items = [to_jsonable(item) for item in response.get("Items", [])]
-    for item in items:
-        _decode_json_fields(item, ["year_counts"])
-    return {"hazard_type": decoded_hazard, "seasonal": sorted(items, key=lambda item: item["SK"])}
-
-
-def get_velocity_data(params: dict) -> dict:
-    limit = min(int(params.get("limit", "48")), 100)
-    items = _scan_analytics(FilterExpression=Attr("PK").begins_with("VELOCITY#"))
-    items.sort(key=lambda item: (item.get("source", ""), item.get("quarter", "")), reverse=True)
-    return {"velocity": items[:limit]}
-
-
-def get_briefings(params: dict) -> dict:
-    limit = min(int(params.get("limit", "12")), 52)
-    response = analytics_table.query(
-        KeyConditionExpression=Key("PK").eq("BRIEFING#WEEKLY"),
-        ScanIndexForward=False,
-        Limit=limit,
-    )
-    briefings = [to_jsonable(item) for item in response.get("Items", [])]
-    return {"briefings": briefings}
-
-
-def _scan_analytics(**kwargs) -> list:
-    items = []
-    response = analytics_table.scan(**kwargs)
-    items.extend(to_jsonable(item) for item in response.get("Items", []))
-
-    while "LastEvaluatedKey" in response:
-        response = analytics_table.scan(
-            **kwargs,
-            ExclusiveStartKey=response["LastEvaluatedKey"],
-        )
-        items.extend(to_jsonable(item) for item in response.get("Items", []))
-
-    return items
-
-
-def _decode_json_fields(item: dict, fields: list[str]) -> None:
-    for field in fields:
-        if isinstance(item.get(field), str):
-            try:
-                item[field] = json.loads(item[field])
-            except (json.JSONDecodeError, TypeError):
-                pass
-
-
 def lambda_handler(event, context):
     """Routes API Gateway requests to the appropriate handler."""
     logger.info(f"Received event: {json.dumps(event)}")
@@ -331,27 +242,6 @@ def lambda_handler(event, context):
     try:
         if path == "/recalls/stats":
             result = get_recall_stats()
-            return cors_response(200, result)
-
-        elif path == "/analytics/companies":
-            result = get_company_leaderboard(params)
-            return cors_response(200, result)
-
-        elif path == "/analytics/trends":
-            result = get_monthly_trends(params)
-            return cors_response(200, result)
-
-        elif path.startswith("/analytics/seasonal/"):
-            hazard = path_params.get("hazard") or path.rsplit("/", 1)[-1]
-            result = get_seasonal_data(hazard)
-            return cors_response(200, result)
-
-        elif path == "/analytics/velocity":
-            result = get_velocity_data(params)
-            return cors_response(200, result)
-
-        elif path == "/analytics/briefings":
-            result = get_briefings(params)
             return cors_response(200, result)
 
         elif path.startswith("/recalls/") and path_params.get("recall_number"):

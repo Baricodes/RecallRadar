@@ -18,16 +18,6 @@ variable "table_arn" {
   type        = string
 }
 
-variable "analytics_table_name" {
-  description = "DynamoDB analytics table name the Lambda reads from."
-  type        = string
-}
-
-variable "analytics_table_arn" {
-  description = "DynamoDB analytics table ARN the Lambda reads from."
-  type        = string
-}
-
 variable "memory_mb" {
   description = "Lambda memory in MB."
   type        = number

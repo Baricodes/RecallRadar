@@ -1,6 +1,6 @@
-# RecallRadar — Real-Time Recall Intelligence
+# RecallRadar — Real-Time FDA Recall Intelligence
 
-A personal serverless project that ingests recall data, maps geographic impact across the United States, and surfaces insights about recall severity, repeat offenders, seasonal hazards, resolution velocity, and weekly AI-generated threat briefings.
+A personal serverless project that ingests FDA food recall data from openFDA, maps geographic impact across the United States, and surfaces insights about recall severity, frequency, and trends that nobody else aggregates in one place.
 
 ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)
 ![React](https://img.shields.io/badge/React-61DAFB?style=flat&logo=react&logoColor=black)
@@ -40,8 +40,7 @@ The stack is fully serverless on AWS: scheduled Lambda ingestion, DynamoDB stora
 4. **Idempotent storage** — Records are keyed by FDA `recall_number`. Re-running ingestion overwrites existing items — no duplicates.
 5. **Query API** — API Gateway routes GET requests to the query Lambda, which reads from DynamoDB with GSI-backed queries or scans.
 6. **Dashboard** — A React app on CloudFront calls the API from the browser. The map colors states by recall volume; clicking a state filters the feed.
-7. **Trend intelligence** — DynamoDB Streams update company risk profiles in near-real-time, while a weekly Step Functions pipeline computes trend snapshots and archives an AI-generated briefing.
-8. **Monitoring** — A CloudWatch dashboard tracks Lambda invocations, errors, duration, DynamoDB capacity, API 5xx, and DLQ depth. SNS alarms fire on ingestion errors and DLQ messages.
+7. **Monitoring** — A CloudWatch dashboard tracks Lambda invocations, errors, duration, DynamoDB capacity, API 5xx, and DLQ depth. SNS alarms fire on ingestion errors and DLQ messages.
 
 ## 🏗️ Architecture
 
@@ -71,13 +70,6 @@ EventBridge Scheduler (every 6 hours)
 │  GSI: classification,   │
 │       source, status    │
 └─────────────────────────┘
-        │
-        ├──▶ DynamoDB Stream ──▶ Stream Aggregator Lambda ──▶ recallradar-analytics
-        │                                                            ▲
-        │                                                            │
-        └──▶ Weekly EventBridge ──▶ Step Functions ──▶ Trend Compute ┤
-                                      │                              │
-                                      └──▶ Bedrock Briefing ──▶ S3 + SES
         ▲
         │
 ┌─────────────────────────┐
@@ -97,7 +89,6 @@ EventBridge Scheduler (every 6 hours)
 │  GET /recalls           │
 │  GET /recalls/stats     │
 │  GET /recalls/{id}      │
-│  GET /analytics/*       │
 │                         │
 │  API key required       │
 └─────────────────────────┘
@@ -114,22 +105,15 @@ EventBridge Scheduler (every 6 hours)
 
 1. **EventBridge Scheduler** triggers the ingestion Lambda on a 6-hour cadence (with a 15-minute flexible window). Failed invocations land in an SQS dead-letter queue.
 2. **Ingestion Lambda** fetches recall records from openFDA, parses geographic distribution from free-text fields, and writes normalized items to DynamoDB. Individual write failures are logged without aborting the batch.
-3. **DynamoDB Streams** trigger the stream aggregator Lambda when new recalls arrive, updating company profiles and risk scores in the analytics table.
-4. **Weekly analytics pipeline** runs trend computation, generates a Bedrock briefing, archives it to S3, and optionally sends it by SES.
-5. **Query Lambda** serves filtered recall lists, aggregate stats, and precomputed analytics from DynamoDB via API Gateway.
-6. **CloudFront** serves the React dashboard from a private S3 bucket using Origin Access Control.
+3. **Query Lambda** serves filtered recall lists and aggregate stats from DynamoDB via API Gateway.
+4. **CloudFront** serves the React dashboard from a private S3 bucket using Origin Access Control.
 
 ### Components
 
 - **Ingestion Lambda** — Polls openFDA, parses state distribution, writes to DynamoDB
-- **Stream Aggregator Lambda** — Updates company profiles from DynamoDB Streams on recall inserts
-- **Trend Compute Lambda** — Recomputes monthly snapshots, seasonal baselines, resolution velocity, anomalies, and company profiles
-- **Briefing Generator Lambda** — Uses Amazon Bedrock in `us-east-1` to write weekly threat briefings, archives them to S3, and sends SES email when configured
-- **Query Lambda** — Filters, paginates, and serves recall and analytics data for the API
+- **Query Lambda** — Filters, paginates, and aggregates recall data for the API
 - **DynamoDB** — Primary store keyed by `recall_number` with GSIs for classification, source, and status
-- **Analytics DynamoDB Table** — Precomputed company profiles, trend snapshots, seasonal baselines, velocity metrics, and briefing references
 - **API Gateway** — REST endpoints for recalls list, stats, and single-recall lookup
-- **Step Functions + EventBridge** — Weekly analytics orchestration
 - **CloudFront + S3** — Hosts the React dashboard with a private bucket policy
 - **EventBridge Scheduler** — Drives periodic ingestion
 - **CloudWatch + SNS** — Operational dashboard and email alarms
@@ -139,10 +123,8 @@ EventBridge Scheduler (every 6 hours)
 - 🗺️ **Interactive US map** — States color-coded by recall volume; click to filter the feed
 - 📋 **Live recall feed** — Severity badges, firm names, product descriptions, and distribution details
 - 📊 **Stats panel** — Total active recalls, classification breakdown, and top recalling firms
-- 📈 **Trend intelligence dashboard** — Company risk leaderboard, monthly source trend lines, seasonal hazard heatmap, resolution velocity chart, and briefing archive
 - 🔍 **Multi-axis filtering** — Filter by state, FDA classification, and recall status
 - 🔄 **Automated ingestion** — Scheduled polling of openFDA with idempotent deduplication
-- 🧠 **AI weekly briefings** — Bedrock summarizes anomalies, agency activity, repeat offenders, hazards, and closure trends into an archived narrative
 - 📍 **State parsing** — Regex extraction of affected states from free-text distribution patterns
 - 🔔 **Operational monitoring** — CloudWatch dashboard and SNS alarms for ingestion failures
 
@@ -154,14 +136,10 @@ Key Terraform variables in `terraform/variables.tf`:
 |----------|-------------|---------|
 | `aws_region` | AWS region for all resources | `us-east-1` |
 | `table_name` | DynamoDB table name | `recallradar-recalls` |
-| `analytics_table_name` | DynamoDB table name for precomputed Phase 4 analytics | `recallradar-analytics` |
 | `ingestion_lookback_days` | Days of recall history to fetch from openFDA | `90` |
 | `ingestion_schedule_expression` | How often ingestion runs | `rate(6 hours)` |
-| `analytics_weekly_schedule_expression` | Weekly trend intelligence pipeline schedule | `cron(0 13 ? * MON *)` |
 | `api_stage_name` | API Gateway deployment stage | `v1` |
 | `alarm_email` | SNS email for CloudWatch alarms | `""` |
-| `briefing_sender_email` | Verified SES sender for weekly briefings; blank archives without sending | `""` |
-| `briefing_recipient_email` | SES recipient for weekly briefings; blank archives without sending | `""` |
 
 ## 📖 Usage
 
@@ -178,13 +156,10 @@ RecallRadar/
 ├── lambda/
 │   ├── ingestion/          # openFDA → DynamoDB ingestion handler
 │   ├── query/              # API query handler
-│   ├── stream_aggregator/  # DynamoDB Stream → analytics company profiles
-│   ├── trend_compute/      # Weekly analytics recomputation
-│   ├── briefing_generator/ # Bedrock + S3 + SES weekly briefing
 │   ├── shared/             # State parsing + geocoding constants
 │   └── tests/              # Unit tests for state parsing
 ├── dashboard/
-│   ├── src/components/     # RecallMap, RecallFeed, StatsPanel, FilterBar, TrendIntelligencePanel
+│   ├── src/components/     # RecallMap, RecallFeed, StatsPanel, FilterBar
 │   └── src/App.js          # Main dashboard layout
 ├── terraform/
 │   ├── main.tf
@@ -193,7 +168,6 @@ RecallRadar/
 │       ├── recalls_table/
 │       ├── ingestion_lambda/
 │       ├── ingestion_scheduler/
-│       ├── analytics/
 │       ├── query_lambda/
 │       ├── api_gateway/
 │       ├── dashboard_hosting/
@@ -216,25 +190,17 @@ RecallRadar/
 | OAC over public S3 bucket | CloudFront Origin Access Control keeps the S3 bucket private. The dashboard is served through the CDN only — no public bucket policy. |
 | State parsing as a Python function, not Bedrock | `distribution_pattern` has limited patterns — regex handles 95% of cases. Calling Bedrock for string parsing at ingestion time adds cost and latency that isn't justified. AI enrichment targets higher-value analysis like risk scoring. |
 | Scan for stats endpoint (Phase 1) | Full table scan is acceptable when the table has < 30K items and the stats endpoint is called infrequently. DynamoDB Streams + precomputed aggregations replace this before scale matters. |
-| DynamoDB Streams plus weekly batch | Company profiles update quickly on inserts, while weekly full recomputation self-heals missed stream events and handles statistical work like seasonal baselines. |
-| Separate analytics table | Recall queries and analytics queries have different access patterns. Keeping precomputed metrics in `recallradar-analytics` keeps the primary table focused on source records and avoids extra GSIs for dashboard analytics. |
-| Bedrock over template summaries | The weekly briefing needs synthesis across anomalies, company risk, agency activity, and resolution velocity. Claude 3.5 Sonnet is used at low temperature for factual narrative generation. |
-| Seasonal z-score anomaly detection | Current hazard volume is compared against the baseline for the same calendar month, avoiding false positives from predictable seasonal recall patterns. |
-| S3 briefing archive | Each generated briefing is archived with prompt and source data so the dashboard can show history and the analysis is auditable. |
 
 ## 💰 Cost
 
-Phase 4 remains approximately **$3/month** for typical portfolio usage — mostly CloudWatch dashboard and alarms. The analytics table, stream reads, weekly Lambdas, S3 archive, SES, and Bedrock briefing add only a few cents per month at small scale.
+Phase 1 runs for approximately **$3/month** — mostly CloudWatch dashboard and alarms. Lambda, DynamoDB, API Gateway, EventBridge, S3, and CloudFront stay within free tier at typical usage.
 
 | Service | Usage | Monthly cost |
 |---------|-------|--------------|
-| Lambda (ingestion + query + analytics) | ~120 + ~1000 API + stream/weekly invocations | Free tier |
+| Lambda (ingestion + query) | ~120 + ~1000 invocations | Free tier |
 | DynamoDB (on-demand) | ~30K items | Free tier |
-| DynamoDB Streams + analytics table | Low-volume stream reads + small analytics records | ~$0.03 |
 | API Gateway | ~1000 requests | Free tier |
 | EventBridge Scheduler | 4 invocations/day | Free tier |
-| Bedrock weekly briefing | ~4 Claude invocations/month | ~$0.05 |
-| S3 briefing archive + SES email | <1 MB/month + ~4 emails | Free tier |
 | S3 + CloudFront | Static dashboard | ~$0.01 |
 | CloudWatch | Dashboard + 2 alarms | ~$3.00 |
 
@@ -243,7 +209,8 @@ Phase 4 remains approximately **$3/month** for typical portfolio usage — mostl
 Planned extensions that layer on top of Phase 1 without refactoring the core pipeline:
 
 - **Phase 2 — AI enrichment** — Bedrock analyzes `reason_for_recall` for plain-English risk summaries and severity scores
-- **Phase 4 — Trend intelligence** — DynamoDB analytics table, stream aggregation, weekly trend computation, Bedrock briefings, and dashboard visualizations built on the FDA dataset
+- **Phase 3 — Multi-source** — CPSC, NHTSA, and USDA adapters using the same ingestion pattern
+- **Phase 4 — Trend intelligence** — Timestream for time-series analytics and precomputed stats (replaces full-table scan)
 - **Phase 5 — User subscriptions** — Cognito auth + SNS/SES alerts when recalls match user location and allergen profile
 - **Phase 6 — Predictive analytics** — Correlate recall patterns with FDA inspection data
 - **Real-time feed** — WebSocket API for live dashboard updates without polling

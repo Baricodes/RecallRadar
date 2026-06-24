@@ -55,9 +55,7 @@ resource "aws_iam_role_policy" "query" {
         ]
         Resource = [
           var.table_arn,
-          "${var.table_arn}/index/*",
-          var.analytics_table_arn,
-          "${var.analytics_table_arn}/index/*"
+          "${var.table_arn}/index/*"
         ]
       },
       {
@@ -94,8 +92,7 @@ resource "aws_lambda_function" "query" {
 
   environment {
     variables = {
-      TABLE_NAME      = var.table_name
-      ANALYTICS_TABLE = var.analytics_table_name
+      TABLE_NAME = var.table_name
     }
   }
 

@@ -5,9 +5,6 @@ resource "aws_dynamodb_table" "recalls" {
   hash_key  = "PK"
   range_key = "SK"
 
-  stream_enabled   = true
-  stream_view_type = "NEW_IMAGE"
-
   attribute {
     name = "PK"
     type = "S"

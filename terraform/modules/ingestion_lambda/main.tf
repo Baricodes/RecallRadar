@@ -65,9 +65,9 @@ resource "aws_iam_role_policy" "ingestion" {
         Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:*"
       },
       {
-        Sid    = "CloudWatchMetrics"
-        Effect = "Allow"
-        Action = "cloudwatch:PutMetricData"
+        Sid      = "CloudWatchMetrics"
+        Effect   = "Allow"
+        Action   = "cloudwatch:PutMetricData"
         Resource = "*"
         Condition = {
           StringEquals = {

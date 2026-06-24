@@ -22,12 +22,6 @@ variable "table_name" {
   default     = "recallradar-recalls"
 }
 
-variable "analytics_table_name" {
-  description = "DynamoDB table name for Phase 4 analytics records."
-  type        = string
-  default     = "recallradar-analytics"
-}
-
 variable "ingestion_lambda_name" {
   description = "Name of the FDA recall ingestion Lambda function."
   type        = string
@@ -70,24 +64,6 @@ variable "query_lambda_name" {
   default     = "recallradar-query"
 }
 
-variable "stream_aggregator_lambda_name" {
-  description = "Name of the DynamoDB stream aggregation Lambda function."
-  type        = string
-  default     = "recallradar-stream-aggregator"
-}
-
-variable "trend_compute_lambda_name" {
-  description = "Name of the weekly trend computation Lambda function."
-  type        = string
-  default     = "recallradar-trend-compute"
-}
-
-variable "briefing_generator_lambda_name" {
-  description = "Name of the weekly Bedrock briefing generator Lambda function."
-  type        = string
-  default     = "recallradar-briefing-generator"
-}
-
 variable "query_lambda_memory_mb" {
   description = "Memory allocation for the query Lambda (MB)."
   type        = number
@@ -122,28 +98,4 @@ variable "alarm_email" {
   description = "Email for CloudWatch alarm SNS notifications. Leave empty to create the topic without a subscription."
   type        = string
   default     = ""
-}
-
-variable "briefing_bucket_name" {
-  description = "S3 bucket name for archived weekly briefings. Leave empty for recallradar-briefings-ACCOUNT_ID."
-  type        = string
-  default     = ""
-}
-
-variable "briefing_sender_email" {
-  description = "Verified SES sender email for Phase 4 weekly briefings. Leave empty to archive without sending."
-  type        = string
-  default     = ""
-}
-
-variable "briefing_recipient_email" {
-  description = "SES recipient email for Phase 4 weekly briefings. Leave empty to archive without sending."
-  type        = string
-  default     = ""
-}
-
-variable "analytics_weekly_schedule_expression" {
-  description = "EventBridge schedule expression for the Phase 4 weekly analytics pipeline."
-  type        = string
-  default     = "cron(0 13 ? * MON *)"
 }
